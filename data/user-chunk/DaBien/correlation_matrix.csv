@@ -1,0 +1,11 @@
+,gender,location,province,membership,sync_status_id,region,location_name,install_app,district,is_deleted
+gender,,"(np.float64(0.0), np.float64(78258.01857353197))","(np.float64(0.0), np.float64(57983.31825012561))","(np.float64(0.0), np.float64(7609.829896676849))","(1.0, 0.0)","(np.float64(0.0), np.float64(46761.55575987917))","(np.float64(0.0), np.float64(78258.01857353197))","(np.float64(0.0), np.float64(236739.72497771034))","(np.float64(0.0), np.float64(100650.7687969027))","(1.0, 0.0)"
+location,,,"(np.float64(0.0), np.float64(217588409.34677398))","(np.float64(0.0), np.float64(72856.7216956252))","(1.0, 0.0)","(np.float64(0.0), np.float64(26709025.518895917))","(np.float64(0.0), np.float64(4546520216.000001))","(np.float64(0.0), np.float64(6129017.45265633))","(np.float64(0.0), np.float64(1311511222.250441))","(1.0, 0.0)"
+province,,,,"(np.float64(0.0), np.float64(36627.128049048624))","(1.0, 0.0)","(np.float64(0.0), np.float64(28156040.6032919))","(np.float64(0.0), np.float64(217588409.34677398))","(np.float64(0.0), np.float64(2635485.7200411074))","(np.float64(0.0), np.float64(431533767.80735826))","(1.0, 0.0)"
+membership,,,,,"(1.0, 0.0)","(np.float64(0.0), np.float64(31340.544532047694))","(np.float64(0.0), np.float64(72856.7216956252))","(np.float64(0.0), np.float64(36618.89707955126))","(np.float64(0.0), np.float64(48176.204557281795))","(1.0, 0.0)"
+sync_status_id,,,,,,"(1.0, 0.0)","(1.0, 0.0)","(1.0, 0.0)","(1.0, 0.0)","(1.0, 0.0)"
+region,,,,,,,"(np.float64(0.0), np.float64(26709025.518895917))","(np.float64(0.0), np.float64(353924.2945046477))","(np.float64(0.0), np.float64(28941525.774860505))","(1.0, 0.0)"
+location_name,,,,,,,,"(np.float64(0.0), np.float64(6129017.452656331))","(np.float64(0.0), np.float64(1311511222.2504396))","(1.0, 0.0)"
+install_app,,,,,,,,,"(np.float64(0.0), np.float64(4919976.172437044))","(1.0, 0.0)"
+district,,,,,,,,,,"(1.0, 0.0)"
+is_deleted,,,,,,,,,,
