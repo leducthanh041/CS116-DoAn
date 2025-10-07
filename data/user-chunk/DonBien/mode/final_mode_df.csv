@@ -3,10 +3,16 @@ gender,Nữ
 location,766
 province,Hồ Chí Minh
 membership,Standard
+timestamp,1745578692
+created_date,2025-04-25 10:58:12.513000
+updated_date,2025-07-07 15:33:10.201316
 sync_status_id,2
+last_sync_date,None
 sync_error_message,None
 region,Đông Nam Bộ
 location_name,DNA - 81 - 83 Nguyễn Văn Linh
 install_app,In-Store
+install_date,1754179200
 district,Thủ Đức
+user_id,900666cfd44c46ea3bfc5dc9a7c0a871f93b3dd8107d0b8127c6fbd150cad25c
 is_deleted,False
