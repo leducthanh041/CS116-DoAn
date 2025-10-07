@@ -1,0 +1,2 @@
+column,mean,median,std,min,max,nulls,total
+event_value,1.5080983464094773,1.0,2.264976353210698,1.0000,240.0000,0,35729825
