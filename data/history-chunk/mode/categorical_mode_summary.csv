@@ -1,0 +1,11 @@
+Column,Mode
+event_type,Purchase
+channel,In-Store
+payment,Tiền mặt
+location,645
+is_deleted,False
+created_date,2024-06-20 10:01:45.733000
+updated_date,2024-02-05 07:08:29.130000
+customer_id,5040968
+user_id,7f1ad828d8fd0bf64642908060fe5cbdaa5ace25fbf643ffd729f0f1c8812c33
+timestamp,1718877705
