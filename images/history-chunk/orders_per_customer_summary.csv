@@ -1,0 +1,2 @@
+n_customers,total_orders,avg_orders_per_customer,median_orders,p90,p99,max_orders
+2442306,35729825,14.6295447826767,4.0,39.0,151.0,893
