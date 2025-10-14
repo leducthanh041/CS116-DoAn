@@ -1,3 +1,6 @@
 dataset
 # preprocessed-dataset
 *.csv
+# *.parquet
+sales_pers.item_chunk_0.parquet
+sales_pers.purchase_history_daily_chunk_0.parquet
