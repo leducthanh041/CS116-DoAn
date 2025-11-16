@@ -2,3 +2,8 @@ dataset
 preprocessed-dataset
 *.csv
 *.zip
+preprocessed-dataset/
+
+preprocessed-feature
+preprocessed-feature1
+
