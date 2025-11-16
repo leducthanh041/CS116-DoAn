@@ -1,4 +1,9 @@
 dataset
 preprocessed-dataset
 *.csv
-# *.parquet
+*.zip
+preprocessed-dataset/
+
+preprocessed-feature
+preprocessed-feature1
+
