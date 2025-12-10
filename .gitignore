@@ -8,3 +8,4 @@ preprocessed-feature
 preprocessed-feature1
 __pycache__/
 *.parquet
+*.pkl
