@@ -1,0 +1,297 @@
+
+=== VÍ DỤ CHO TARGET_NORM_FINAL = 7M ===
+
+======================================
+item_id: 4045000000001
+age_group_final: Không xác định
+age_phrases_raw: ['trẻ sơ sinh', '6 tháng', '7 tháng-12 tuô']
+age_ranges_norm (trước hậu xử lý): ['6M', '7M']
+age_ranges_norm_final (sau hậu xử lý): ['6M', '7M']
+
+description:
+﻿﻿Đến từ thương hiệu Bnutrition của Pháp, thực phẩm bảo vệ sức khoẻ Brauer Baby & Child Immunity Support cung cấp nhiều dưỡng chất giúp nâng cao sức đề kháng của bé yêu và
+nhiều công dụng khác. Ưu điểm nổi bật. Thành phần dinh dưỡng được kiểm định kỹ càng, 99.9% không đường, không vị, sản phẩm hoàn toàn lành tính và an toàn với trẻ sơ sinh và
+trẻ nhỏ;. Sản phẩm bổ sung beta caroten và vitamin D3 giúp tăng sức đề kháng, hỗ trợ hệ miễn dịch giúp cơ thể bé có khả năng chống lại các loại bệnh và tác nhân gây hại ngoài
+môi trường;. Sản phẩm chứa hàm lượng Vitamin D3 cao, giúp làm tăng khả năng hấp thụ Canxi của cơ thể. Từ đó, hỗ trợ cơ thế bé duy trì sự phát triển xương và răng ổn định. Đây
+cũng chính là nền tảng cho sự tăng trưởng chiều cao của bé trong tương lai.Hướng dẫn sử dụngMẹ nên cho bé sử dụng theo khuyến nghị của chuyên gia chăm sóc sức khỏe hoặc theo
+hàm lượng phù hợp tuỳ theo độ tuổi: Trẻ sơ sinh đến 6 tháng: uống 1ml/lần Trẻ 7 tháng-12 tuổi: uống 2ml/lần. Ngày uống 4 lần Lưu ý: Lắc kỹ trước khi dùng. Sử dụng
+công cụ đo được cung cấp
+
+description_new:
+Không xác định
+
+
+=== VÍ DỤ CHO TARGET_NORM_FINAL = 6M ===
+
+======================================
+item_id: 4045000000001
+age_group_final: Không xác định
+age_phrases_raw: ['trẻ sơ sinh', '6 tháng', '7 tháng-12 tuô']
+age_ranges_norm (trước hậu xử lý): ['6M', '7M']
+age_ranges_norm_final (sau hậu xử lý): ['6M', '7M']
+
+description:
+﻿﻿Đến từ thương hiệu Bnutrition của Pháp, thực phẩm bảo vệ sức khoẻ Brauer Baby & Child Immunity Support cung cấp nhiều dưỡng chất giúp nâng cao sức đề kháng của bé yêu và
+nhiều công dụng khác. Ưu điểm nổi bật. Thành phần dinh dưỡng được kiểm định kỹ càng, 99.9% không đường, không vị, sản phẩm hoàn toàn lành tính và an toàn với trẻ sơ sinh và
+trẻ nhỏ;. Sản phẩm bổ sung beta caroten và vitamin D3 giúp tăng sức đề kháng, hỗ trợ hệ miễn dịch giúp cơ thể bé có khả năng chống lại các loại bệnh và tác nhân gây hại ngoài
+môi trường;. Sản phẩm chứa hàm lượng Vitamin D3 cao, giúp làm tăng khả năng hấp thụ Canxi của cơ thể. Từ đó, hỗ trợ cơ thế bé duy trì sự phát triển xương và răng ổn định. Đây
+cũng chính là nền tảng cho sự tăng trưởng chiều cao của bé trong tương lai.Hướng dẫn sử dụngMẹ nên cho bé sử dụng theo khuyến nghị của chuyên gia chăm sóc sức khỏe hoặc theo
+hàm lượng phù hợp tuỳ theo độ tuổi: Trẻ sơ sinh đến 6 tháng: uống 1ml/lần Trẻ 7 tháng-12 tuổi: uống 2ml/lần. Ngày uống 4 lần Lưu ý: Lắc kỹ trước khi dùng. Sử dụng
+công cụ đo được cung cấp
+
+description_new:
+Không xác định
+
+
+=== VÍ DỤ CHO TARGET_NORM_FINAL = 6M+ ===
+
+======================================
+item_id: 0029050000001
+age_group_final: Không xác định
+age_phrases_raw: ['6 tháng trở lên']
+age_ranges_norm (trước hậu xử lý): ['6M+']
+age_ranges_norm_final (sau hậu xử lý): ['6M+']
+
+description:
+Bánh Qui Dành Cho Trẻ Em Heinz Farley Original 120g Bánh qui Heinz Farley được sản xuất từ lúa mì bổ sung thêm 15 vitamin và khoáng chất, bao gồm cả DHA. Là một món đồ ăn tiện
+dụng và dinh dưỡng, giúp bé học cách cắn và nhai. Thương hiệu: HEINZ Thành phần : Bột mì, nước, đường, dầu thực vật, vitamin và khoáng chất (vitamin A,B1,B2, niacinamide,
+panthothenic acid, B6, B9, B12, D,E, canxi, Iot, Phospho, kẽm), sữa, Fructo-oligosaccharide, emulsifer (Monoglyceride), Dầu cá(DHA), antioxdant, Acidity regulator. Xuất
+xứ: Indonesia Đối tượng sử dụng:  6 tháng trở lên Trọng lượng: 120 gr Hướng dẫn sử dụng: Cho bánh vào chén và bẻ vụn thêm vào nước sôi để nguội hoặc sữa, khuấy cho đến khi
+bánh tan hoàn toàn, cho trẻ dùng ngay. Hoặc cho trẻ ăn trực tiếp. Hướng dẫn bảo quản: Bảo quản nơi khô ráo, tránh ánh sáng trực tiếp.﻿
+
+description_new:
+Không xác định
+
+
+=== VÍ DỤ CHO TARGET_NORM_FINAL = 0M+ ===
+
+======================================
+item_id: 0014510170006
+age_group_final: Không xác định
+age_phrases_raw: ['từ độ tuổi sơ sinh trở đi']
+age_ranges_norm (trước hậu xử lý): ['0M+']
+age_ranges_norm_final (sau hậu xử lý): ['0M+']
+
+description:
+Ba lô CF A038002 Vàng không chỉ là vật dụng để Mẹ đựng đồ khi ra ngoài cho bé yêu như: quần áo, sữa, tã... mà còn là người bạn đồng hành của bé, đựng sách vở và những vật dụng
+khác khi đến trường. Với thiết kế hình con vật ngộ nghĩnh, màu sắc nổi bật, chắc chắn bé sẽ yêu thích chiếc ba lô xinh xắn này. ĐẶC ĐIỂM NỔI BẬT - Sản phẩm phù hợp cho cả bé
+trai và bé gái, khi đi chơi hay đi học. - Chất liệu nhung nỉ mềm mại, thiết kế rộng rãi giúp Mẹ thoải mái khi sử dụng và đựng đồ cho bé. - Đường may sắc sảo, kỹ lưỡng đến từng
+chi tiết. - Quai đeo chắc chắn, khóa kéo tinh tế. - Balo có nhiều hình ngộ nghĩnh và màu sắc nổi bật, tươi sáng. THÔNG TIN SẢN PHẨM Tên sản phẩm: Ba lô CF A038002 Vàng Thương
+hiệu: CF Sản xuất tại: Việt Nam
+
+description_new:
+Chi tiết sản phẩm                     Tên sản phẩm: Ba lô CF A038002 Vàng         Thương hiệu: CF         Sản xuất tại: Việt Nam                      Ba lô CF A038002 Vàng là
+ba lô trẻ em dành cho bé trai và bé gái của thương hiệu CF được sản xuất tại Việt Nam. Với thiết kế hình con vật ngộ nghĩnh và màu sắc nổi bật, chắc chắn bé sẽ yêu thích chiếc
+ba lô xinh xắn này.                           Ba lô CF A038002 Vàng với chất liệu nhung nỉ mềm mại và thiết kế rộng rãi                 Chất liệu nhung nỉ mềm mại, thiết kế
+rộng rãi giúp Mẹ thoải mái khi sử dụng và đựng đồ cho bé, tạo cảm giác dễ chịu khi sử dụng.               Ba lô CF A038002 Vàng với đường may sắc sảo và quai đeo chắc chắn
+Đường may sắc sảo, kỹ lưỡng đến từng chi tiết cùng quai đeo chắc chắn, mang lại độ bền cao khi sử dụng.            Ba lô CF A038002 Vàng với khóa kéo tinh tế      Khóa kéo
+tinh tế, giúp cho việc đóng mở dễ dàng, an toàn cho bé khi sử dụng.      Hướng dẫn chọn size   Do ba lô được thiết kế với kích thước rộng rãi và có thể điều chỉnh quai đeo, mẹ
+có thể lựa chọn cho bé từ độ tuổi sơ sinh trở đi tùy theo nhu cầu sử dụng.   Hướng dẫn sử dụng         Sắp xếp đồ dùng cần thiết cho bé như quần áo, sách vở, sữa, tã vào trong
+ba lô.      Tháo chéo quai đeo để bé đeo ba lô trên lưng, giúp bảo vệ tư thế khi đi lại.      Sử dụng khóa kéo để đóng kín ba lô, tránh rơi rớt đồ khỏi ba lô.      Hướng dẫn
+bảo quản         Tránh để ba lô ở nơi ẩm ướt, tránh xa ánh nắng trực tiếp.      Nên vệ sinh bề mặt bằng khăn ẩm để giữ độ mới cho ba lô.      Không nên giặt máy hoặc ngâm nước
+để bảo vệ chất liệu nhung nỉ.      Lưu ý         Sản phẩm này phù hợp cho cả bé trai và bé gái.      Đường may và khóa kéo đều được kiểm tra kỹ lưỡng trước khi xuất xưởng.
+Thành phần         Chất liệu: Nhung nỉ mềm mại
+
+
+=== VÍ DỤ CHO TARGET_NORM_FINAL = 3M ===
+
+======================================
+item_id: 0985004500001
+age_group_final: Không xác định
+age_phrases_raw: ['sơ sinh', 'sơ sinh', '3 tháng']
+age_ranges_norm (trước hậu xử lý): ['3M']
+age_ranges_norm_final (sau hậu xử lý): ['3M']
+
+description:
+Áo sơ sinh cột dây tay dài CF I049005 Hồng là sản phẩm với chất liệu mềm mại, thấm hút mồ hôi, đường may kỹ lưỡng chắc chắn sẽ giúp bé thoải mái vận động. Kiểu dáng dễ thương
+họa tiết đáng yêu sẽ giúp bé thêm phần thời trang và xinh xắn. Chất liệu mềm mại Sản phẩm được may từ chất liệu mềm mại cho phép bé thoải mái chơi đùa, vận động mà không cảm
+thấy khó chịu. Bên cạnh đó, chất liệu không gây kích ứng da và có khả năng thấm hút mồ hôi tốt nên Mẹ không phải lo lắng bé yêu bị nổi rôm, tuyệt đối an toàn khi sử dụng.
+Thiết kế thoải mái, đáng yêu Thiết kế thoải mái phối cùng họa tiết cá tính sẽ mang đến phong cách thoải mái và không kém phần thời trang cho bé của bạn. Ngoài ra, các đường
+nối, đường cuốn biên trên sản phẩm không bị nổi cộm gây khó chịu và ngứa da bé cho phép bé vận động dễ dàng. THÔNG TIN SẢN PHẨM Tên sản phẩm: Áo sơ sinh cột dây tay dài CF
+I049005 Hồng Thương hiệu: CF Nhà sản xuất : CÔNG TY CỔ PHẦN DỆT MAY GIA AN Sản xuất tại : Việt Nam Chất liệu: 100% cotton Độ tuổi: Dành cho bé 3 tháng Họa tiết trên áo ngẫu
+nhiên tùy từng đượt nhập hàng BẢO QUẢN SẢN PHẨM - Hạn chế dùng sản phẩm giặt tẩy - Không ngâm, giặt chung với sản phẩm ra màu - Không giặt trong nước nóng trên 40°C - Nên
+ủi/là mặt trái sản phẩm
+
+description_new:
+Không xác định
+
+
+=== VÍ DỤ CHO TARGET_NORM_FINAL = 0-12M ===
+
+======================================
+item_id: 3523000000102
+age_group_final: Không xác định
+age_phrases_raw: ['sơ sinh', 'sơ sinh', '0-12 tháng']
+age_ranges_norm (trước hậu xử lý): ['0-12M']
+age_ranges_norm_final (sau hậu xử lý): ['0-12M']
+
+description:
+﻿Cặp áo sơ sinh cài chéo tay dài Animo KV123003 (NB-12M,Trắng họa tiết-Cam) với chất liệu vải cao cấp mang lại những trải nghiệm đầu đời êm mềm cho bé yêu. Sản phẩm không chứa
+thành phần độc hại, đảm bảo an toàn đối với da của bé sơ sinh. Ưu điểm nổi bật. 100% vải cotton thoáng khi, mềm mại và co giãn tốt; . Thiết kế tay dài mang lại cảm giác ấm áp
+và gần gũi cho bé yêu;. Đường may, đường cuốn biên tỉ mỉ, không gây hằn vào da bé; . Hoạ tiết đáng yêu kết hợp cùng màu hồng nhạt cho bé vẻ ngoài ngọt ngào, dễ thương. ﻿
+﻿﻿﻿﻿﻿﻿﻿﻿
+
+description_new:
+Không xác định
+
+======================================
+item_id: 0981004630001
+age_group_final: Không xác định
+age_phrases_raw: ['sơ sinh', '0-12 tháng']
+age_ranges_norm (trước hậu xử lý): ['0-12M']
+age_ranges_norm_final (sau hậu xử lý): ['0-12M']
+
+description:
+Áo sơ sinh cài chéo tay dài CF (Hồng) Thương hiệu: CF Nhà sản xuất: CÔNG TY TNHH SẢN XUẤT THƯƠNG MẠI LIÊN KẾT THỜI TRANG HP Xuất xứ: Việt Nam Đối tượng sử dụng: 0-12 tháng
+Thành phần chất liệu: - Chất liệu 100% cotton mềm mại- Sản phẩm được may từ vải cotton mềm mại cho phép bé thoải mái chơi đùa, vận động mà không cảm thấy khó chịu. Bên cạnh
+đó, chất liệu cotton không gây kích ứng da và có khả năng thấm hút mồ hôi tốt nên Mẹ không phải lo lắng bé yêu bị nổi rôm, tuyệt đối an toàn khi sử dụng. Hướng dẫn sử dụng: -
+Hạn chế dùng bột giặt có chất tẩy mạnh - Hạn chế ngâm giặt chung với các sản phẩm ra màu - Hạn chế giặt bằng nước nóng - Nên ủi/là mặt trái sản phẩm - Hạn chế phơi trực tiếp
+dưới ánh nắng Đặc điểm sản phẩm:- Chất liệu vải 100% cotton mềm mại, thấm hút mồ hôi tốt, không kích ứng với làn da mỏng manh của bé.- Kiểu dáng rộng rãi, thoải mái, mát mẻ
+khi thời tiết nóng bức và có tay dài giữ ấm cho bé.- Gam màu cùng họa tiết ngẫu nhiên đáng yêu.- Sản phẩm có nhiều size cho bé từ NB-12 tháng tuổi.
+
+description_new:
+Không xác định
+
+======================================
+item_id: 0981016630001
+age_group_final: Không xác định
+age_phrases_raw: ['sơ sinh', '0-12 tháng']
+age_ranges_norm (trước hậu xử lý): ['0-12M']
+age_ranges_norm_final (sau hậu xử lý): ['0-12M']
+
+description:
+Áo sơ sinh cài chéo tay dài CF (Trắng) Thương hiệu: CF Nhà sản xuất: CÔNG TY TNHH SẢN XUẤT THƯƠNG MẠI LIÊN KẾT THỜI TRANG HP Xuất xứ: Việt Nam Đối tượng sử dụng: 0-12 tháng
+Thành phần chất liệu: - Chất liệu 100% cotton mềm mại- Sản phẩm được may từ vải cotton mềm mại cho phép bé thoải mái chơi đùa, vận động mà không cảm thấy khó chịu. Bên cạnh
+đó, chất liệu cotton không gây kích ứng da và có khả năng thấm hút mồ hôi tốt nên Mẹ không phải lo lắng bé yêu bị nổi rôm, tuyệt đối an toàn khi sử dụng. Hướng dẫn sử dụng: -
+Hạn chế dùng bột giặt có chất tẩy mạnh - Hạn chế ngâm giặt chung với các sản phẩm ra màu - Hạn chế giặt bằng nước nóng - Nên ủi/là mặt trái sản phẩm - Hạn chế phơi trực tiếp
+dưới ánh nắng Đặc điểm sản phẩm:- Chất liệu vải 100% cotton mềm mại, thấm hút mồ hôi tốt, không kích ứng với làn da mỏng manh của bé.- Kiểu dáng rộng rãi, thoải mái, mát mẻ
+khi thời tiết nóng bức và có tay dài giữ ấm cho bé.- Gam màu cùng họa tiết ngẫu nhiên đáng yêu.- Sản phẩm có nhiều size cho bé từ NB-12 tháng tuổi.
+
+description_new:
+Không xác định
+
+======================================
+item_id: 0980013630001
+age_group_final: Không xác định
+age_phrases_raw: ['sơ sinh', '0-12 tháng']
+age_ranges_norm (trước hậu xử lý): ['0-12M']
+age_ranges_norm_final (sau hậu xử lý): ['0-12M']
+
+description:
+Áo sơ sinh cài chéo tay ngắn CF (Tím) Thương hiệu: CF Nhà sản xuất: CÔNG TY TNHH SẢN XUẤT THƯƠNG MẠI LIÊN KẾT THỜI TRANG HP Xuất xứ: Việt Nam Đối tượng sử dụng: 0-12 tháng
+Thành phần chất liệu: - Chất liệu 100% cotton mềm mại- Sản phẩm được may từ vải cotton mềm mại cho phép bé thoải mái chơi đùa, vận động mà không cảm thấy khó chịu. Bên cạnh
+đó, chất liệu cotton không gây kích ứng da và có khả năng thấm hút mồ hôi tốt nên Mẹ không phải lo lắng bé yêu bị nổi rôm, tuyệt đối an toàn khi sử dụng. Hướng dẫn sử dụng: -
+Hạn chế dùng bột giặt có chất tẩy mạnh - Hạn chế ngâm giặt chung với các sản phẩm ra màu - Hạn chế giặt bằng nước nóng - Nên ủi/là mặt trái sản phẩm - Hạn chế phơi trực tiếp
+dưới ánh nắng Đặc điểm sản phẩm:- Chất liệu vải 100% cotton mềm mại, thấm hút mồ hôi tốt, không kích ứng với làn da mỏng manh của bé.- Kiểu dáng rộng rãi, thoải mái, mát mẻ
+khi thời tiết nóng bức và có tay dài giữ ấm cho bé.- Gam màu cùng họa tiết ngẫu nhiên đáng yêu.- Sản phẩm có nhiều size cho bé từ NB-12 tháng tuổi.
+
+description_new:
+Không xác định
+
+======================================
+item_id: 0980016630001
+age_group_final: Không xác định
+age_phrases_raw: ['sơ sinh', '0-12 tháng']
+age_ranges_norm (trước hậu xử lý): ['0-12M']
+age_ranges_norm_final (sau hậu xử lý): ['0-12M']
+
+description:
+Áo sơ sinh cài chéo tay ngắn CF (Trắng) Thương hiệu: CF Nhà sản xuất: CÔNG TY TNHH SẢN XUẤT THƯƠNG MẠI LIÊN KẾT THỜI TRANG HP Xuất xứ: Việt Nam Đối tượng sử dụng: 0-12 tháng
+Thành phần chất liệu: - Chất liệu 100% cotton mềm mại- Sản phẩm được may từ vải cotton mềm mại cho phép bé thoải mái chơi đùa, vận động mà không cảm thấy khó chịu. Bên cạnh
+đó, chất liệu cotton không gây kích ứng da và có khả năng thấm hút mồ hôi tốt nên Mẹ không phải lo lắng bé yêu bị nổi rôm, tuyệt đối an toàn khi sử dụng. Hướng dẫn sử dụng: -
+Hạn chế dùng bột giặt có chất tẩy mạnh - Hạn chế ngâm giặt chung với các sản phẩm ra màu - Hạn chế giặt bằng nước nóng - Nên ủi/là mặt trái sản phẩm - Hạn chế phơi trực tiếp
+dưới ánh nắng Đặc điểm sản phẩm:- Chất liệu vải 100% cotton mềm mại, thấm hút mồ hôi tốt, không kích ứng với làn da mỏng manh của bé.- Kiểu dáng rộng rãi, thoải mái, mát mẻ
+khi thời tiết nóng bức và có tay dài giữ ấm cho bé.- Gam màu cùng họa tiết ngẫu nhiên đáng yêu.- Sản phẩm có nhiều size cho bé từ NB-12 tháng tuổi.
+
+description_new:
+Không xác định
+
+======================================
+item_id: 0980104630001
+age_group_final: Không xác định
+age_phrases_raw: ['sơ sinh', '0-12 tháng']
+age_ranges_norm (trước hậu xử lý): ['0-12M']
+age_ranges_norm_final (sau hậu xử lý): ['0-12M']
+
+description:
+Áo sơ sinh cài chéo tay ngắn CF (Xanh) Thương hiệu: CF Nhà sản xuất: CÔNG TY TNHH SẢN XUẤT THƯƠNG MẠI LIÊN KẾT THỜI TRANG HP Xuất xứ: Việt Nam Đối tượng sử dụng: 0-12 tháng
+Thành phần chất liệu: - Chất liệu 100% cotton mềm mại- Sản phẩm được may từ vải cotton mềm mại cho phép bé thoải mái chơi đùa, vận động mà không cảm thấy khó chịu. Bên cạnh
+đó, chất liệu cotton không gây kích ứng da và có khả năng thấm hút mồ hôi tốt nên Mẹ không phải lo lắng bé yêu bị nổi rôm, tuyệt đối an toàn khi sử dụng. Hướng dẫn sử dụng: -
+Hạn chế dùng bột giặt có chất tẩy mạnh - Hạn chế ngâm giặt chung với các sản phẩm ra màu - Hạn chế giặt bằng nước nóng - Nên ủi/là mặt trái sản phẩm - Hạn chế phơi trực tiếp
+dưới ánh nắng Đặc điểm sản phẩm:- Chất liệu vải 100% cotton mềm mại, thấm hút mồ hôi tốt, không kích ứng với làn da mỏng manh của bé.- Kiểu dáng rộng rãi, thoải mái, mát mẻ
+khi thời tiết nóng bức và có tay dài giữ ấm cho bé.- Gam màu cùng họa tiết ngẫu nhiên đáng yêu.- Sản phẩm có nhiều size cho bé từ NB-12 tháng tuổi.
+
+description_new:
+Không xác định
+
+======================================
+item_id: 3523000000107
+age_group_final: Không xác định
+age_phrases_raw: ['sơ sinh', 'sơ sinh', '0-12 tháng']
+age_ranges_norm (trước hậu xử lý): ['0-12M']
+age_ranges_norm_final (sau hậu xử lý): ['0-12M']
+
+description:
+﻿﻿﻿Cặp áo sơ sinh cài chéo tay dài Animo KV123004 (NB-12M,Cam nhạt_Trắng) được làm chất liệu vải cao cấp mang lại cho bé cảm giác thoải mái khi vận động. Cặp áo có 2 màu cùng
+hoạ tiết dễ thương là món đồ không thể thiếu trong tủ đồ của bé sơ sinh. Ưu điểm nổi bật. Chất liệu 100% cotton mềm mại, có khả năng thấm hút tốt, không bí bách da bé; . Thiết
+kế dài tay giúp giữ ấm cơ thể bé khi ngủ;. Độ bền cao, ít bị rũ sau khi giặt; . Nút cài chắc chắn giúp ba mẹ thay đồ cho bé dễ dàng hơn. ﻿ ﻿﻿﻿﻿﻿﻿﻿
+
+description_new:
+Không xác định
+
+
+=== VÍ DỤ CHO TARGET_NORM_FINAL = 0-9M ===
+
+======================================
+item_id: 3533000000271
+age_group_final: Không xác định
+age_phrases_raw: ['sơ sinh dài animo easy k v0425074 ( 0-9 tháng', 'sơ sinh', 'sơ sinh']
+age_ranges_norm (trước hậu xử lý): ['0-9M']
+age_ranges_norm_final (sau hậu xử lý): ['0-9M']
+
+description:
+﻿﻿Set 3 quần sơ sinh dài Animo Easy KV0425074 được làm từ vải cao cấp, an toàn và lành tính đối với da non nhạy cảm. Nhờ đó, sản phẩm giúp mang lại cảm giác thoải mái, thoáng
+khí cả ngày cho bé. Ưu điểm nổi bậtĐặc điểm thiết kế. Quần dáng dài thoải mái, giúp tăng khả năng giữ ấm phần thân dưới củabé;. Chun quần co giãn tốt, cho bé thoả sức vui chơi
+không lo gò bó;. Thiết kế basic, đơn giản dễ phối cùng nhiều loại trang phục khác nhau;. Phom dáng rộng rãi, năng động.Đặc điểm chất liệu. Quần sơ sinh làm từ 95% vải viscose
+mềm mại, có khả năng thấm hút tốt, đem lại cảm giác thoáng mát;. Kết hợp cùng 5% spandex giúp co giãn linh hoạt, cho bé thoả sức vận động, vui chơi; . Chất liệu vải giữ phom
+dáng tốt, ít bị rũ và dễ dàng giặt. ﻿﻿﻿
+
+description_new:
+Tên sản phẩm: Set 3 quần sơ sinh dài Animo Easy KV0425074 (NB-9M,Trắng) Thương hiệu: Animo Danh mục: Quần Áo Trẻ Em  Từ khóa: null
+
+
+=== VÍ DỤ CHO TARGET_NORM_FINAL = 24-96M ===
+
+======================================
+item_id: 2206000000047
+age_group_final: Không xác định
+age_phrases_raw: ['lứa tuổi 2-8', 'lứa tuổi từ 2-8']
+age_ranges_norm (trước hậu xử lý): ['24-96M']
+age_ranges_norm_final (sau hậu xử lý): ['24-96M']
+
+description:
+Ehon - Gà mẹ Cục Tác và đàn con lông vàng - Gà mẹ mong manh là truyện về gà mẹ cùng gà con qua mẫu truyện gà mẹ mong manh với nhiều màu sắc bắt mắt, sinh động Đặc Điểm sản
+phẩm: Được coi là “thực phẩm của tâm hồn” cho trẻ em tại Nhật Bản, ehon là dòng truyện tranh dành cho lứa tuổi 2-8 khá mới mẻ và là lựa chọn hàng đầu của các bậc phụ huynh cho
+dòng sách truyện kể. Đặc điểm của truyện Ehon là nội dung ngắn gọn, xoay quanh những câu chuyện gần gũi, quen thuộc nhưng truyền đạt thông điệp sâu sắc và có tính giáo dục
+cao. "GÀ MẸ CỤC TÁC VÀ ĐÀN CON LÔNG VÀNG" là một trong những bộ sách thú vị thuộc dòng truyện tranh Ehon. > Nhân vật chính là cô gà Cục Tác và đàn con lông vàng được mô phỏng
+cực kỳ ngộ nghĩnh, sinh động giúp kích thích giác quan và trí tưởng tượng của trẻ > Tất cả hình minh họa đều được dựng từ mô hình đồ chơi quen thuộc của trẻ em Nhật Bản vô
+cùng dễ thương đến... người lớn cũng thích mê! > 10 tập là 10 câu chuyện nhỏ xoay quanh cuộc sống hàng ngày của cô gà Cục Tác cùng 10 bạn gà lông vàng nhỏ xíu, từ đó đưa tới
+những thông điệp nhẹ nhàng về tình cảm gia đình, tình bạn, sự đoàn kết... Thông tin sản phẩm: Tên sản phẩm: Ehon - Gà mẹ Cục Tác và đàn con lông vàng - Gà mẹ mong manh Tác
+giả: Karoku Koubou Nhà xuất bản: Thanh Niên Địa chỉ phát hành:CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ VĂN HÓA ĐINH TỊ, Tổ 9, Tập thể Sân Bay, Phường Long Biên, Quận Long Biên, TP
+Hà Nội. Chất liệu: Giấy, bìa mềm Số trang: 24 trang Kích thước(dài x rộng x dày): 21 x 21 x 0.2 cm
+
+description_new:
+Chi tiết sản phẩm                     Tên sản phẩm: Ehon - Gà mẹ Cục Tác và đàn con lông vàng - Gà mẹ mong manh         Tác giả: Karoku Koubou         Nhà xuất bản: Thanh Niên
+Địa chỉ phát hành: CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ VĂN HÓA ĐINH TỊ, Tổ 9, Tập thể Sân Bay, Phường Long Biên, Quận Long Biên, TP Hà Nội.         Số trang: 24 trang
+Kích thước: 21 x 21 x 0.2 cm                        Ehon - Gà mẹ Cục Tác và đàn con lông vàng - Gà mẹ mong manh là một loại truyện tranh dành cho trẻ em lứa tuổi từ 2-8 của
+thương hiệu Ehon đến từ Nhật Bản. Đây là một bộ sách thú vị có nội dung ngắn gọn, gần gũi với trẻ, phù hợp để kích thích sự phát triển trí tưởng tượng và giáo dục trẻ nhỏ.
+Hình ảnh sinh động + Kích thích giác quan           Tất cả hình minh hoạ trong truyện đều được dựng từ mô hình đồ chơi quen thuộc của trẻ em Nhật Bản, ngộ nghĩnh và dễ thương,
+giúp kích thích giác quan và trí tưởng tượng của trẻ.            Câu chuyện giáo dục + Thông điệp sâu sắc      Bộ truyện bao gồm 10 tập, mỗi tập là một câu chuyện nhỏ xoay
+quanh cuộc sống hàng ngày của cô gà Cục Tác và 10 bạn gà lông vàng, truyền đạt những thông điệp nhẹ nhàng về tình cảm gia đình, tình bạn, sự đoàn kết và nhiều bài học quý giá
+cho trẻ.            Thích hợp cho trẻ nhỏ + Một phần không thể thiếu trong thư viện trẻ      Truyện Ehon được coi là "thực phẩm của tâm hồn" giúp trẻ giải trí và học hỏi, đồng
+thời là lựa chọn hàng đầu của nhiều bậc phụ huynh cho sự phát triển của con em mình.         Hướng dẫn chọn size   Không áp dụng cho sản phẩm này.      Hướng dẫn sử dụng
+Đọc truyện với trẻ vào thời gian rảnh để kích thích trí tưởng tượng và khả năng ngôn ngữ.       Có thể kể lại câu chuyện theo phong cách riêng của bạn để gia tăng sự hứng thú.
+Khuyến khích trẻ đặt câu hỏi và đóng góp ý kiến về câu chuyện.         Hướng dẫn bảo quản          Giữ sách ở nơi khô ráo và thoáng mát.       Tránh để sách bị ướt hoặc tiếp
+xúc với ánh nắng trực tiếp lâu dài.       Nên đặt sách vào kệ hoặc nơi an toàn khi không sử dụng để tránh bị rách hoặc bẩn.         Lưu ý          Không cho trẻ em đọc một
+mình nếu chưa có sự giám sát của người lớn.       Khuyến khích trẻ sử dụng sách một cách cẩn thận và tôn trọng.            Thành phần          Giấy       Bìa mềm
+
