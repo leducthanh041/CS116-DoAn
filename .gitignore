@@ -9,3 +9,4 @@ preprocessed-feature1
 preprocessed
 __pycache__/
 *.parquet
+feature_engineered
