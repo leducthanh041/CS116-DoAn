@@ -77,47 +77,40 @@ def split_and_save_parquet(df, num_files, output_dir, type_file):
         print(f"Đã lưu file: {file_path}")
 # endregion
 
+import polars as pl
+from datetime import datetime
+
 def build_feature_label(
-    transactions_lf: pl.LazyFrame,  # purchase_df.lazy()
+    transactions_lf: pl.LazyFrame,  # transaction_df.lazy()
     items_lf: pl.LazyFrame,         # item_df.lazy()
-    users_lf: pl.LazyFrame,         # chưa dùng, để đúng spec
-    begin_hist: datetime,
-    end_hist: datetime,
+    users_lf: pl.LazyFrame,         # user_df.lazy(), hiện không dùng
+    begin: datetime,
+    end: datetime,
     begin_recent: datetime,
     end_recent: datetime,
 ) -> pl.LazyFrame:
     """
-    Tạo bảng Feature - Label cho bài toán khuyến nghị top-k.
+    Tạo bảng Feature - Label rút gọn cho bài toán khuyến nghị top-k.
 
-    Output columns:
+    Output:
         - customer_id
         - item_id
-        - brand_counts
-        - age_counts
-        - category_counts
-        - segment_counts            (# lần mua cùng (category_l1, segment_name) với item hiện tại)
-        - target_user_group_counts
-        - time_since_last_purchase_in_B_category
-        - Y
+        - brand_count      (X_1)
+        - age_group_count  (X_2)
+        - category_count   (X_3)
+        - Y (0/1)
     """
-
-    # 0. Làm sạch transactions_lf: bỏ cột segment_name_right nếu tồn tại (do join trước đó sinh ra)
-    tx_cols = transactions_lf.columns
-    if "segment_name_right" in tx_cols:
-        base_tx = transactions_lf.drop("segment_name_right")
-    else:
-        base_tx = transactions_lf
 
     # 1. Filter giai đoạn HIST và RECENT trên bảng giao dịch
     hist_lf = (
-        base_tx
+        transactions_lf
         .filter(
-            pl.col("created_date").is_between(begin_hist, end_hist, closed="both")
+            pl.col("created_date").is_between(begin, end, closed="both")
         )
     )
 
     recent_lf = (
-        base_tx
+        transactions_lf
         .filter(
             pl.col("created_date").is_between(begin_recent, end_recent, closed="both")
         )
@@ -197,6 +190,48 @@ def build_feature_label(
     )
 
     # 11. Xây tập candidate (customer_id, item_id) từ HIST ∪ RECENT
+    # 2. Thuộc tính item cần thiết từ item_df
+    #    - dùng: brand, age_group_final, category
+    item_attrs = (
+        items_lf
+        .select([
+            "item_id",
+            "brand",
+            "age_group_final",
+            "category",
+        ])
+    )
+
+    # 3. Gắn thuộc tính item vào HIST
+    hist_enriched = (
+        hist_lf
+        .join(item_attrs, on="item_id", how="left")
+    )
+
+    # 4. Tính 3 feature trong HIST
+
+    # 4.1. X_1: số lần user mua brand của item hiện tại trong HIST
+    brand_count = (
+        hist_enriched
+        .group_by(["customer_id", "brand"])
+        .agg(pl.len().alias("brand_count"))
+    )
+
+    # 4.2. X_2: số lần user mua age_group_final của item hiện tại trong HIST
+    age_group_count = (
+        hist_enriched
+        .group_by(["customer_id", "age_group_final"])
+        .agg(pl.len().alias("age_group_count"))
+    )
+
+    # 4.3. X_3: số lần user mua category của item hiện tại trong HIST
+    category_count = (
+        hist_enriched
+        .group_by(["customer_id", "category"])
+        .agg(pl.len().alias("category_count"))
+    )
+
+    # 5. Xây tập candidate (customer_id, item_id) từ HIST ∪ RECENT
     hist_pairs = hist_lf.select(["customer_id", "item_id"]).unique()
     recent_pairs = recent_lf.select(["customer_id", "item_id"]).unique()
 
@@ -270,6 +305,42 @@ def build_feature_label(
     )
 
     # 14. Tạo label Y từ RECENT: (customer_id, item_id) có giao dịch trong RECENT -> Y=1
+    # 6. Gắn thông tin item (brand, age_group_final, category) vào candidate
+    candidate_enriched = (
+        candidate_pairs
+        .join(item_attrs, on="item_id", how="left")
+    )
+
+    # 7. Join 3 bảng đếm vào candidate
+    features = (
+        candidate_enriched
+        # join brand_count
+        .join(
+            brand_count,
+            on=["customer_id", "brand"],
+            how="left",
+        )
+        # join age_group_count
+        .join(
+            age_group_count,
+            on=["customer_id", "age_group_final"],
+            how="left",
+        )
+        # join category_count
+        .join(
+            category_count,
+            on=["customer_id", "category"],
+            how="left",
+        )
+        # fill null = 0 cho các count (user chưa mua brand/age_group/category đó trong HIST)
+        .with_columns([
+            pl.col("brand_count").fill_null(0),
+            pl.col("age_group_count").fill_null(0),
+            pl.col("category_count").fill_null(0),
+        ])
+    )
+
+    # 8. Tạo label Y từ RECENT: (customer_id, item_id) có giao dịch trong RECENT -> Y=1
     labels = recent_pairs.with_columns(
         pl.lit(1).alias("Y")
     )
@@ -289,8 +360,13 @@ def build_feature_label(
             "segment_counts",
             "target_user_group_counts",
             "time_since_last_purchase_in_B_category",
+            "brand_count",      # X_1
+            "age_group_count",  # X_2
+            "category_count",   # X_3
             "Y",
         ])
     )
 
     return feature_label_lf
+    return feature_label_lf
+
