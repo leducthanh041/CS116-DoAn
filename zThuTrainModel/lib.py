@@ -116,80 +116,6 @@ def build_feature_label(
         )
     )
 
-    # 2. Thuộc tính item cơ bản (từ item_df)
-    item_attrs = items_lf.select([
-        "item_id",
-        "brand_final",
-        "age_bucket_final",
-        "category",
-        "category_l1",
-        "target_user_group_final",
-    ])
-
-    # 3. Mapping item_id -> segment_name đại diện (mode trong HIST)
-    item_segment = (
-        hist_lf
-        .group_by("item_id")
-        .agg(pl.col("segment_name").mode().alias("segment_name_list"))
-        .with_columns(
-            pl.col("segment_name_list").list.first().alias("segment_name")
-        )
-        .select(["item_id", "segment_name"])
-    )
-
-    # 4. HIST đã gắn đầy đủ: brand/age/category/category_l1/segment_name
-    hist_enriched = (
-        hist_lf
-        .join(item_attrs,   on="item_id", how="left")
-        .join(item_segment, on="item_id", how="left")
-    )
-
-    # 5. Feature 1: brand_counts
-    brand_counts = (
-        hist_enriched
-        .group_by(["customer_id", "brand_final"])
-        .agg(pl.len().alias("brand_counts"))
-    )
-
-    # 6. Feature 2: age_counts
-    age_counts = (
-        hist_enriched
-        .group_by(["customer_id", "age_bucket_final"])
-        .agg(pl.len().alias("age_counts"))
-    )
-
-    # 7. Feature 3: category_counts
-    category_counts = (
-        hist_enriched
-        .group_by(["customer_id", "category"])
-        .agg(pl.len().alias("category_counts"))
-    )
-
-    # 8. Feature: target_user_group_counts
-    target_user_group_counts = (
-        hist_enriched
-        .group_by(["customer_id", "target_user_group_final"])
-        .agg(pl.len().alias("target_user_group_counts"))
-    )
-
-    # 9. Feature 4: segment_counts theo (customer, category_l1, segment_name)
-    segment_counts = (
-        hist_enriched
-        .group_by(["customer_id", "category_l1", "segment_name"])
-        .agg(pl.len().alias("segment_counts"))
-    )
-
-    # 10. Feature: time_since_last_purchase_in_B_category
-    #     - lấy lần mua gần nhất theo (customer_id, category) trong HIST
-    last_cat_purchase = (
-        hist_enriched
-        .group_by(["customer_id", "category"])
-        .agg(
-            pl.col("created_date").max().alias("last_purchase_date")
-        )
-    )
-
-    # 11. Xây tập candidate (customer_id, item_id) từ HIST ∪ RECENT
     # 2. Thuộc tính item cần thiết từ item_df
     #    - dùng: brand, age_group_final, category
     item_attrs = (
@@ -237,74 +163,6 @@ def build_feature_label(
 
     candidate_pairs = pl.concat([hist_pairs, recent_pairs]).unique()
 
-    # 12. Enrich candidate với thuộc tính item & segment_name đại diện
-    candidate_enriched = (
-        candidate_pairs
-        .join(item_attrs,   on="item_id", how="left")
-        .join(item_segment, on="item_id", how="left")
-    )
-
-    # 13. Join tất cả các bảng count + last_cat_purchase để tạo feature set
-    features = (
-        candidate_enriched
-        # brand_counts
-        .join(
-            brand_counts,
-            on=["customer_id", "brand_final"],
-            how="left",
-        )
-        # age_counts
-        .join(
-            age_counts,
-            on=["customer_id", "age_bucket_final"],
-            how="left",
-        )
-        # category_counts
-        .join(
-            category_counts,
-            on=["customer_id", "category"],
-            how="left",
-        )
-        # segment_counts — join theo (customer_id, category_l1, segment_name)
-        .join(
-            segment_counts,
-            on=["customer_id", "category_l1", "segment_name"],
-            how="left",
-        )
-        # target_user_group_counts
-        .join(
-            target_user_group_counts,
-            on=["customer_id", "target_user_group_final"],
-            how="left",
-        )
-        # last_cat_purchase để tính time_since_last_purchase_in_B_category
-        .join(
-            last_cat_purchase,
-            on=["customer_id", "category"],
-            how="left",
-        )
-        # fill null = 0 cho các count
-        .with_columns([
-            pl.col("brand_counts").fill_null(0),
-            pl.col("age_counts").fill_null(0),
-            pl.col("category_counts").fill_null(0),
-            pl.col("segment_counts").fill_null(0),
-            pl.col("target_user_group_counts").fill_null(0),
-        ])
-        # tính số ngày từ end_hist đến lần mua gần nhất trong cùng category
-        .with_columns(
-            (
-                (pl.lit(end_hist) - pl.col("last_purchase_date"))
-                .dt.total_days()
-            ).alias("time_since_last_purchase_in_B_category")
-        )
-        # khách chưa từng mua category đó → 9999
-        .with_columns(
-            pl.col("time_since_last_purchase_in_B_category").fill_null(9999)
-        )
-    )
-
-    # 14. Tạo label Y từ RECENT: (customer_id, item_id) có giao dịch trong RECENT -> Y=1
     # 6. Gắn thông tin item (brand, age_group_final, category) vào candidate
     candidate_enriched = (
         candidate_pairs
@@ -354,12 +212,6 @@ def build_feature_label(
         .select([
             "customer_id",
             "item_id",
-            "brand_counts",
-            "age_counts",
-            "category_counts",
-            "segment_counts",
-            "target_user_group_counts",
-            "time_since_last_purchase_in_B_category",
             "brand_count",      # X_1
             "age_group_count",  # X_2
             "category_count",   # X_3
@@ -367,6 +219,5 @@ def build_feature_label(
         ])
     )
 
-    return feature_label_lf
     return feature_label_lf
 
