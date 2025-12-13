@@ -10,3 +10,4 @@ preprocessed
 __pycache__/
 *.parquet
 feature_engineered
+*.pkl
