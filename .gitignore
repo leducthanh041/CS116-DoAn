@@ -6,6 +6,10 @@ preprocessed-dataset/
 preprocessed-data
 preprocessed-feature
 preprocessed-feature1
+preprocessed
+__pycache__/
+*.parquet
+feature_engineered
 __pycache__/
 *.parquet
 *.pkl
