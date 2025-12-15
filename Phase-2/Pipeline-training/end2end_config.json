@@ -1,0 +1,85 @@
+{
+  "paths": {
+    "feature_label_path": "./artifacts/stage2_feature_label/feature_label_final.parquet",
+    "groundtruth_path": "./groundtruth.pkl",
+    "transactions_path_glob": "./preprocessed-dataset/sale_pers.purchase_history_daily_chunk_*.parquet",
+    "items_path_glob": "./preprocessed-dataset/sale_pers.item_chunk_*.parquet",
+    "users_path_glob": "./preprocessed-dataset/sale_pers.user_chunk_*.parquet",
+    "stage1_artifacts_dir": "./artifacts",
+    "stage1_prefix": "stage1_implicit_itemitem",
+    "extra_feature_dir": "./new-feature",
+    "out_dir": "./artifacts/stage2_model"
+  },
+  "time": {
+    "test_begin": "2025-01-01",
+    "test_end": "2025-01-31",
+    "trend_month_lag": 3
+  },
+  "params": {
+    "len_test": 28,
+    "len_val": 28,
+    "len_hist": 120,
+    "len_recent": 28,
+    "min_trans_items": 35,
+    "session_window": 1,
+    "train_set": [
+      1
+    ],
+    "top_trans_items": 1000,
+    "N_trend": 10,
+    "N_cand": 100,
+    "min_coo": 600,
+    "N_neg": 10,
+    "n_iter": 1,
+    "Topk": 10,
+    "filter_bought_items": false,
+    "filter_fashion": false
+  },
+  "stage1_search": {
+    "n_trials": 90,
+    "random_state": 42,
+    "selection_metric": "recall",
+    "search_space": {
+      "weight_type": [
+        "log_count",
+        "log_qty",
+        "log_spent"
+      ],
+      "len_hist": [
+        90,
+        120
+      ],
+      "len_val": [
+        28
+      ],
+      "N_cand": [
+        100
+      ],
+      "N_trend": [
+        100
+      ],
+      "K_mult": [
+        2
+      ],
+      "allow_repeat": [
+        false
+      ]
+    }
+  },
+  "stage2_training": {
+    "task": "binary",
+    "valid_user_frac": 0.1,
+    "random_state": 42
+  },
+  "stage2_model": {
+    "algo": "lightgbm",
+    "random_state": 42,
+    "num_threads": -1,
+    "n_estimators": 50,
+    "learning_rate": 0.05,
+    "num_leaves": 63,
+    "min_data_in_leaf": 50,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8
+  }
+}
