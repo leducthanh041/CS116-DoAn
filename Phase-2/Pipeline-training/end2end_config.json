@@ -47,19 +47,20 @@
       ],
       "len_hist": [
         90,
-        120
+        120,
+        150
       ],
       "len_val": [
         28
       ],
       "N_cand": [
-        100
+        10
       ],
       "N_trend": [
         100
       ],
       "K_mult": [
-        2
+        1
       ],
       "allow_repeat": [
         false

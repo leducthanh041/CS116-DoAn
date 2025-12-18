@@ -1,0 +1,50 @@
+{
+  "transactions_path_glob": ".././preprocessed-dataset/sale_pers.purchase_history_daily_chunk_*.parquet",
+  "items_path_glob": ".././preprocessed-dataset/sale_pers.item_chunk_*.parquet",
+  "users_path_glob": ".././preprocessed-dataset/sale_pers.user_chunk_*.parquet",
+  "artifacts_dir": "./artifacts_stage1",
+  "run_name": "full_randomsearch",
+  "train_end": "2024-11-30",
+  "recent_begin": "2024-12-01",
+  "len_hist": 120,
+  "len_recent": 28,
+  "N_cand": 100,
+  "N_trend": 100,
+  "weight_type": "log_count",
+  "K_model_mult": 3,
+  "num_threads": 0,
+  "filter_train_history_in_gt": true,
+  "batch_users": 100000,
+  "do_random_search": true,
+  "n_trials": 45,
+  "random_state": 42,
+  "search_space": {
+    "len_hist": [
+      60,
+      90,
+      120
+    ],
+    "len_recent": [
+      14,
+      28
+    ],
+    "N_cand": [
+      100
+    ],
+    "N_trend": [
+      100
+    ],
+    "weight_type": [
+      "log_count",
+      "log_qty",
+      "log_spent"
+    ],
+    "K_model_mult": [
+      2,
+      3
+    ]
+  },
+  "quick": false,
+  "max_rows_train": 0,
+  "max_rows_eval": 0
+}
