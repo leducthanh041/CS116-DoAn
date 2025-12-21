@@ -38,10 +38,7 @@ class ItemItemCFStage1(BaseEstimator):
         # Feature Storages
         self.item_metadata_ = {}   
         self.user_profiles_ = {}
-        
-        # [RESTORED] Khôi phục dictionary lưu ngày mua cuối
         self.user_item_last_date_ = {} 
-        
         self.item_global_pop_30d_ = {}
         self.max_date_ = None
         
@@ -50,23 +47,26 @@ class ItemItemCFStage1(BaseEstimator):
         self.region_trending_indices_ = {} 
         self.pregnancy_items_indices_ = [] 
         self.fashion_trending_indices_ = [] 
-        
-        # [REMOVED] Đã xóa phần load artifacts user_baby_dob và item_target_age
 
-        # [NEW] ĐỊNH NGHĨA DANH SÁCH FEATURE (Đã thêm lại Recency)
+        # [NEW] ĐỊNH NGHĨA DANH SÁCH FEATURE
+        # Đã thêm cat_hist_cnt, age_group_hist_cnt
         self.feature_names = [
             # 1. Ranking Info
             "stage1_score", "stage1_rank", "sim_max", "sim_avg", "support_cnt",
-            # 2. Interaction Counters
-            "item_hist_cnt", "brand_match_cnt", "cat2_match_cnt",
-            # 3. Recency (Được thêm lại)
+            # 2. Interaction Counters (Đã bổ sung)
+            "item_hist_cnt", 
+            "brand_match_cnt",  # Brand Final Count
+            "cat2_match_cnt", 
+            "cat_hist_cnt",       # [NEW] Category Count
+            "age_group_hist_cnt", # [NEW] Age Group Final Count
+            # 3. Recency
             "feat_days_since_item", "feat_days_since_cat",
             # 4. Price & Popularity
             "feat_price_ratio", "feat_log_price", "feat_pop_30d",
         ]
 
     def fit(self, df_train):
-        print(f"[{self.__class__.__name__}] Starting fit process (With Recency)...")
+        print(f"[{self.__class__.__name__}] Starting fit process (With Extra Counters)...")
         self.df_train = df_train.copy()
         
         # 1. Prepare Data & Matrix
@@ -174,9 +174,11 @@ class ItemItemCFStage1(BaseEstimator):
         )
 
     def _build_advanced_features_data(self):
-        print("   -> Building metadata & user profiles...")
+        print("   -> Building metadata & user profiles (Adding Counters)...")
         cols = ["item_id"]
-        for c in ["brand", "brand_final", "category", "category_l1", "category_l2", "price"]:
+        # [MODIFIED] Thêm age_group_final vào danh sách cột cần load
+        potential_cols = ["brand", "brand_final", "category", "category_l1", "category_l2", "price", "age_group_final"]
+        for c in potential_cols:
             if c in self.df_item.columns: cols.append(c)
             
         df_meta = self.df_item[cols].drop_duplicates("item_id")
@@ -194,13 +196,16 @@ class ItemItemCFStage1(BaseEstimator):
                 idx = self.item_id_to_index_[iid]
                 p_meta = row.get("price", 0.0)
                 p_final = item_prices_train.get(iid, p_meta)
+                
                 brand_val = row.get("brand_final", row.get("brand", "UNK"))
                 
+                # [MODIFIED] Lưu thêm category và age_group vào metadata
                 self.item_metadata_[idx] = {
                     "brand": brand_val,
                     "cat": row.get("category", "UNK"),
                     "cat1": row.get("category_l1", "UNK"),
                     "cat2": row.get("category_l2", "UNK"),
+                    "age_group": row.get("age_group_final", "UNK"), # [NEW]
                     "price": float(p_final)
                 }
 
@@ -212,7 +217,8 @@ class ItemItemCFStage1(BaseEstimator):
         df_valid = self.df_train[valid_u].copy()
         df_valid = df_valid.merge(df_meta, on="item_id", how="left")
         
-        for c in ["brand", "category_l2"]:
+        # Fill NA cho các cột quan trọng
+        for c in ["brand", "category", "category_l2", "age_group_final"]:
             if c in df_valid.columns: df_valid[c] = df_valid[c].fillna("UNK")
             
         if "spent_row" not in df_valid.columns:
@@ -220,7 +226,6 @@ class ItemItemCFStage1(BaseEstimator):
             q = df_valid["quantity"].astype(float).fillna(1.0) if "quantity" in df_valid.columns else 1.0
             df_valid["spent_row"] = p * q
         
-        # [RESTORED] Tính toán ngày mua cuối của từng user-item để tính Recency
         self.user_item_last_date_ = df_valid.groupby(["customer_id", "item_id"])["created_datetime"].max().to_dict()
         
         for uid, group in tqdm(df_valid.groupby("customer_id"), desc="Building Profiles"):
@@ -228,20 +233,29 @@ class ItemItemCFStage1(BaseEstimator):
             u_idx = self.user_id_to_index_[uid]
             item_indices = [self.item_id_to_index_[i] for i in group["item_id"] if i in self.item_id_to_index_]
             
-            # [RESTORED] Tính stats cho Category L2 gồm cả ngày mua cuối
             cat_stats = group.groupby("category_l2").agg(
                 last_date=("created_datetime", "max"),
                 avg_spent=("spent_row", "mean")
             ).to_dict(orient="index")
             
             brand_col = "brand_final" if "brand_final" in group.columns else "brand"
+            age_col = "age_group_final" if "age_group_final" in group.columns else None
             
-            self.user_profiles_[u_idx] = {
+            # [MODIFIED] Tính thêm Counters cho Category và Age Group
+            profile = {
                 "item_counts": Counter(item_indices),
                 "brand_counts": Counter(group[brand_col]),
                 "cat2_counts": Counter(group["category_l2"]),
-                "cat2_profile": cat_stats # Lưu đầy đủ profile (avg_spent + last_date)
+                "cat_counts": Counter(group["category"]), # [NEW]
+                "cat2_profile": cat_stats 
             }
+            
+            if age_col:
+                profile["age_group_counts"] = Counter(group[age_col]) # [NEW]
+            else:
+                profile["age_group_counts"] = Counter()
+                
+            self.user_profiles_[u_idx] = profile
 
     def _build_region_trending(self):
         print("   -> Building Region-based Trending...")
@@ -270,8 +284,6 @@ class ItemItemCFStage1(BaseEstimator):
             top_indices = [self.item_id_to_index_[i] for i in top_items if i in self.item_id_to_index_]
             if top_indices:
                 self.region_trending_indices_[region] = top_indices
-                
-        print(f"   -> Built trending for {len(self.region_trending_indices_)} regions.")
 
     def _build_pregnancy_list(self):
         print("   -> Building Pregnancy/Newborn Items List...")
@@ -331,11 +343,17 @@ class ItemItemCFStage1(BaseEstimator):
             if idx not in self.index_to_item_id_: return
             
             item_id_str = self.index_to_item_id_[idx]
-            c_meta = self.item_metadata_.get(idx, {"brand": "UNK", "cat2": "UNK", "price": 0})
+            # Mặc định UNK nếu không tìm thấy
+            c_meta = self.item_metadata_.get(idx, {
+                "brand": "UNK", "cat": "UNK", "cat2": "UNK", "age_group": "UNK", "price": 0
+            })
             
             f_item_cnt = 0
             f_brand_cnt = 0
             f_cat2_cnt = 0
+            f_cat_cnt = 0        # [NEW]
+            f_age_group_cnt = 0  # [NEW]
+            
             f_days_item = 999
             f_days_cat = 999
             f_price_ratio = 1.0
@@ -344,16 +362,19 @@ class ItemItemCFStage1(BaseEstimator):
                 u_idx_local = self.user_id_to_index_[u_id]
                 if u_idx_local in self.user_profiles_:
                     u_prof = self.user_profiles_[u_idx_local]
+                    
+                    # Lấy số lần xuất hiện
                     f_item_cnt = u_prof["item_counts"].get(idx, 0)
                     f_brand_cnt = u_prof["brand_counts"].get(c_meta["brand"], 0)
                     f_cat2_cnt = u_prof["cat2_counts"].get(c_meta["cat2"], 0)
+                    f_cat_cnt = u_prof["cat_counts"].get(c_meta["cat"], 0)                # [NEW]
+                    f_age_group_cnt = u_prof["age_group_counts"].get(c_meta["age_group"], 0) # [NEW]
                     
-                    # [RESTORED] Tính Recency: Days since last purchase of this item
+                    # Recency
                     last_item_dt = self.user_item_last_date_.get((u_id, item_id_str), None)
                     if last_item_dt:
                         f_days_item = (self.max_date_ - last_item_dt).days
                     
-                    # [RESTORED] Tính Recency & Price Ratio cho Category
                     cat_stat = u_prof["cat2_profile"].get(c_meta["cat2"], {})
                     last_cat_dt = cat_stat.get("last_date", None)
                     if last_cat_dt:
@@ -370,10 +391,13 @@ class ItemItemCFStage1(BaseEstimator):
                 "stage1_rank": s_rank, "stage1_score": score, 
                 "sim_max": s_sim_max, "sim_avg": s_sim_avg, "support_cnt": s_support,
                 
-                # --- Features (With Recency Restored) ---
+                # --- Features Updated ---
                 "item_hist_cnt": f_item_cnt, 
                 "brand_match_cnt": f_brand_cnt, 
                 "cat2_match_cnt": f_cat2_cnt,
+                "cat_hist_cnt": f_cat_cnt,             # [NEW]
+                "age_group_hist_cnt": f_age_group_cnt, # [NEW]
+                
                 "feat_days_since_item": f_days_item, 
                 "feat_days_since_cat": f_days_cat,
                 "feat_price_ratio": f_price_ratio, 

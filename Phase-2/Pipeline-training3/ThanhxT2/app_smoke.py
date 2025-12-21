@@ -8,14 +8,12 @@ import joblib
 from config.settings import CFG, get_path
 
 # ==========================================
-# CẤU HÌNH ĐƯỜNG DẪN (Cập nhật .pkl)
+# CẤU HÌNH ĐƯỜNG DẪN
 # ==========================================
-# Lưu ý: Tên file phải khớp với file bạn save trong test.py
-PATH_PRED_NEW = get_path("artifacts/predictions_new_item_rec.pkl")
-PATH_PRED_ALL = get_path("artifacts/predictions_all_item_rec.pkl")
-
-PATH_GT = "./data/final_groundtruth.pkl"
-PATH_MODEL_S1 = get_path("artifacts/stage1_model_base.pkl") 
+PATH_SUB_NEW = get_path("artifacts/submission_jan2025_new.csv")
+PATH_SUB_ALL = get_path("artifacts/submission_jan2025_all.csv")
+PATH_GT = "/datastore/uittogether/LuuTru/Thanhld/CS116-DoAn/Phase-2/Pipeline-training3/Thanh/data/final_groundtruth.pkl"
+PATH_MODEL_S1 = get_path("artifacts/stage1_model_base.pkl") # Cần file này để check warm users
 PATH_ITEM_DIR = CFG.paths.raw_data_path 
 PATH_TRX_DIR = CFG.paths.raw_data_path
 
@@ -35,100 +33,82 @@ def read_parquet_pattern(base_path, keyword, columns=None):
     return pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
 
 # ==========================================
-# HELPER: CONVERT PREDICTION DICT TO DF
-# ==========================================
-def convert_dict_to_df(pkl_path):
-    """
-    Đọc file .pkl (Dict) và chuyển thành DataFrame để tương thích với UI.
-    Input: {user: [item1, item2, ...]}
-    Output: DataFrame [customer_id, item_id, rank, pred_score]
-    """
-    if not os.path.exists(pkl_path):
-        return None
-        
-    with open(pkl_path, "rb") as f:
-        pred_dict = pickle.load(f)
-        
-    # Convert list of dicts for speed
-    rows = []
-    for user, items in pred_dict.items():
-        # Giả sử items là list đã sort theo score từ test.py
-        for rank, item in enumerate(items, start=1):
-            rows.append({
-                "customer_id": str(user),
-                "item_id": str(item),
-                "rank": rank,
-                # Giả lập score để UI có cái để hiển thị/sort (Rank 1 -> Score cao)
-                "pred_score": 1.0 / rank 
-            })
-            
-    if not rows:
-        return pd.DataFrame(columns=["customer_id", "item_id", "rank", "pred_score"])
-        
-    return pd.DataFrame(rows)
-
-# ==========================================
 # LOAD DATA
 # ==========================================
 @st.cache_data
 def load_static_data():
-    """Load kết quả submission (.pkl) và Ground Truth"""
-    print(">>> Loading Predictions (.pkl)...")
+    """Load kết quả submission và Ground Truth (Hỗ trợ explode List/Array items)"""
+    print(">>> Loading CSV Results...")
+    try:
+        # Load CSV kết quả dự đoán
+        df_new = pd.read_csv(PATH_SUB_NEW, dtype={'customer_id': str, 'item_id': str})
+        df_all = pd.read_csv(PATH_SUB_ALL, dtype={'customer_id': str, 'item_id': str})
+    except FileNotFoundError as e:
+        st.error(f"Thiếu file CSV submission: {e}")
+        st.stop()
     
-    # 1. Load Predictions (Dict -> DF)
-    df_new = convert_dict_to_df(PATH_PRED_NEW)
-    if df_new is None:
-        st.error(f"❌ Không tìm thấy file: {PATH_PRED_NEW}. Hãy chạy test.py trước.")
-        st.stop()
-        
-    df_all = convert_dict_to_df(PATH_PRED_ALL)
-    if df_all is None:
-        st.error(f"❌ Không tìm thấy file: {PATH_PRED_ALL}. Hãy chạy test.py trước.")
-        st.stop()
-
-    # 2. Load Ground Truth
     print(">>> Loading Ground Truth...")
-    if not os.path.exists(PATH_GT):
-        st.error(f"❌ Không tìm thấy file GT: {PATH_GT}")
-        st.stop()
-        
     with open(PATH_GT, "rb") as f:
         gt_data = pickle.load(f)
         
     gt_clean = {}
 
-    # Case A: DataFrame
+    # =========================================================
+    # CASE 1: Dữ liệu là DataFrame (Đã fix logic Explode)
+    # =========================================================
     if isinstance(gt_data, pd.DataFrame):
-        u_col, i_col = 'customer_id', 'item_id'
+        print(f"   [INFO] Detected DataFrame GT with {len(gt_data)} rows.")
+        u_col = 'customer_id'
+        i_col = 'item_id'
+        
+        # 1. Kiểm tra cột
+        if u_col not in gt_data.columns or i_col not in gt_data.columns:
+            st.error(f"DataFrame GroundTruth thiếu cột {u_col} hoặc {i_col}")
+            st.stop()
+
+        # 2. [QUAN TRỌNG] Xử lý List/Array trong cột item_id (Explode)
         if not gt_data.empty:
-            first = gt_data[i_col].iloc[0]
-            if isinstance(first, (list, np.ndarray, set)):
+            first_val = gt_data[i_col].iloc[0]
+            # Nếu là list, array, set -> Bung ra thành từng dòng
+            if isinstance(first_val, (list, np.ndarray, set)):
+                print(f"   [INFO] Detected aggregated items ({type(first_val)}). Exploding...")
                 gt_data = gt_data.explode(i_col)
         
+        # 3. Lọc bỏ dòng rỗng sau khi explode
         gt_data = gt_data.dropna(subset=[u_col, i_col])
+
+        # 4. Ép kiểu String & Xử lý số float (để tránh 123.0 != 123)
         gt_data[u_col] = gt_data[u_col].astype(str)
         try:
+            # Convert float -> int -> str (vd: 123.0 -> 123 -> "123")
             gt_data[i_col] = gt_data[i_col].astype(float).astype(np.int64).astype(str)
         except:
+            # Fallback nếu không phải số
             gt_data[i_col] = gt_data[i_col].astype(str)
 
+        # 5. GroupBy User và gom Item thành Set
         gt_clean = gt_data.groupby(u_col)[i_col].apply(set).to_dict()
 
-    # Case B: Dictionary
+    # =========================================================
+    # CASE 2: Dữ liệu là Dictionary (Legacy)
+    # =========================================================
     elif isinstance(gt_data, dict):
-        # Unwrap nested keys
+        # Unwrap nếu bị lồng key
         for key in ['gt_test', 'test', 'groundtruth']:
-            if key in gt_data: gt_data = gt_data[key]; break
-            
+            if key in gt_data:
+                gt_data = gt_data[key]
+                break
+        
+        # Chuẩn hóa ID
         for u, v in gt_data.items():
-            u_str = str(u)
+            user_str = str(u)
             if isinstance(v, (list, tuple, set, np.ndarray)):
-                gt_clean[u_str] = set(str(x) for x in v)
+                gt_clean[user_str] = set(str(x) for x in v)
             else:
-                gt_clean[u_str] = {str(v)}
+                gt_clean[user_str] = {str(v)}
                 
+    print(f"   [SUCCESS] Loaded {len(gt_clean)} users in Ground Truth.")
     return df_new, df_all, gt_clean
-
 @st.cache_resource
 def load_train_user_set():
     """Load danh sách User trong tập Train để xác định Cold Start"""
@@ -136,14 +116,9 @@ def load_train_user_set():
     try:
         if os.path.exists(PATH_MODEL_S1):
             stage1 = joblib.load(PATH_MODEL_S1)
+            # Lấy tập user đã biết trong quá trình train
             return set(stage1.user_id_to_index_.keys())
         else:
-            # Fallback sang file cũ nếu file base chưa có
-            alt_path = get_path("artifacts/stage1_model.pkl")
-            if os.path.exists(alt_path):
-                stage1 = joblib.load(alt_path)
-                return set(stage1.user_id_to_index_.keys())
-            
             st.warning("⚠️ Không tìm thấy model Stage 1. Không thể lọc chính xác Cold/Warm.")
             return set()
     except Exception as e:
@@ -154,13 +129,8 @@ def load_train_user_set():
 def load_metadata():
     """Load thông tin Item"""
     cols_needed = ["item_id", "item_name", "category", "category_l1", "category_l2", "category_l3", "brand", "age_group_final"]
-    
-    # Tìm file item
-    pattern = os.path.join(PATH_ITEM_DIR, "*item_chunk*.parquet")
-    files = glob.glob(pattern)
-    if not files: return {}
-    
-    sample_cols = pd.read_parquet(files[0]).columns.tolist()
+    sample_file = glob.glob(os.path.join(PATH_ITEM_DIR, "*item_chunk*.parquet"))[0]
+    sample_cols = pd.read_parquet(sample_file).columns.tolist()
     final_cols = [c for c in cols_needed if c in sample_cols]
     
     df_item = read_parquet_pattern(PATH_ITEM_DIR, "item_chunk", columns=final_cols)
@@ -179,7 +149,6 @@ def get_user_history_dynamic(user_id):
     
     for f in files:
         try:
-            # Load từng chunk, filter ngay lập tức để tiết kiệm RAM
             df_chunk = pd.read_parquet(f, columns=cols)
             df_user = df_chunk[df_chunk['customer_id'].astype(str) == str(user_id)]
             if not df_user.empty: user_history_dfs.append(df_user)
@@ -200,16 +169,13 @@ def highlight_hit(row, gt_items):
 
 def display_recs(df, user_id, item_map, gt_items, title, top_k=10):
     st.subheader(title)
-    
-    # Lọc theo user_id
     user_recs = df[df['customer_id'] == user_id].copy()
     
     if user_recs.empty:
         st.info("No recommendations generated.")
         return
 
-    # Sắp xếp theo rank (đã tạo ở bước convert)
-    user_recs = user_recs.sort_values("rank", ascending=True).head(top_k)
+    user_recs = user_recs.sort_values("pred_score", ascending=False).head(top_k)
     
     # Map info
     for col in ['item_name', 'category', 'category_l1', 'category_l2', 'category_l3']:
@@ -219,9 +185,8 @@ def display_recs(df, user_id, item_map, gt_items, title, top_k=10):
     user_recs['Is Hit 🎯'] = user_recs['item_id'].apply(lambda x: '✅' if x in gt_items else '')
     
     # Chọn cột hiển thị
-    cols_show = ['Is Hit 🎯', 'rank', 'item_id', 'Item Name', 'Category', 'Category l1', 'Category l2']
+    cols_show = ['Is Hit 🎯', 'item_id', 'Item Name', 'Category', 'Category l1', 'Category l2', 'Category l3', 'pred_score']
     
-    # Hiển thị
     st.dataframe(
         user_recs[cols_show].style.apply(lambda x: highlight_hit(x, gt_items), axis=1),
         hide_index=True,
@@ -236,7 +201,7 @@ def display_recs(df, user_id, item_map, gt_items, title, top_k=10):
 # ==========================================
 def main():
     st.set_page_config(page_title="RecSys Cold Start Audit", layout="wide")
-    st.title("❄️ RecSys Cold Start Auditor (Pickle Version)")
+    st.title("❄️ RecSys Cold Start Auditor")
     
     with st.spinner("Loading Resources..."):
         df_new, df_all, gt_clean = load_static_data()
@@ -244,9 +209,12 @@ def main():
         train_user_set = load_train_user_set()
         
     # --- PHÂN LOẠI USER ---
+    # Lấy danh sách user có trong tập test (từ file submission)
     test_users = set(df_new['customer_id'].unique())
     
+    # Cold Users: Có trong Test nhưng KHÔNG có trong Train
     cold_users = sorted(list(test_users - train_user_set))
+    # Warm Users: Có trong cả hai
     warm_users = sorted(list(test_users.intersection(train_user_set)))
     
     # --- SIDEBAR CONTROL ---
@@ -278,6 +246,7 @@ def main():
             else:
                 st.error("Danh sách user trống!")
         elif 'curr_user' in st.session_state:
+            # Giữ user hiện tại nếu nó vẫn nằm trong pool, nếu không thì reset
             if st.session_state['curr_user'] in pool_users:
                 selected_user = st.session_state['curr_user']
     else:
@@ -296,6 +265,7 @@ def main():
         st.markdown(f"## 👤 User: `{selected_user}` ({status_icon})")
         
         # --- A. HISTORY ---
+        # Chỉ load history nếu là Warm User (vì Cold User chắc chắn trống, đỡ tốn time load)
         if not is_cold:
             with st.expander("📜 Purchase History (Train Period)", expanded=False):
                 with st.spinner("Checking history..."):
@@ -311,16 +281,16 @@ def main():
                             "Date": row.get('created_date'),
                             "Item ID": iid,
                             "Name": info.get("item_name", "N/A"),
-                            "Category l1": info.get("category_l1", "N/A"),
-                            "Category l2": info.get("category_l2", "N/A")
+                            "Category l1": info.get("category_l1", "N/A")
                         })
                     st.dataframe(pd.DataFrame(hist_display), use_container_width=True)
         else:
-            st.info("ℹ️ User này không có lịch sử mua hàng trong tập Train.")
+            st.info("ℹ️ User này không có lịch sử mua hàng trong tập Train (đúng tính chất Cold Start).")
 
         st.divider()
 
         # --- B. GROUND TRUTH (Test Period) ---
+        # User thực sự mua gì trong tháng 1/2025
         gt_items = gt_clean.get(selected_user, set())
         
         st.subheader(f"🛒 Real Purchases (Jan 2025) - {len(gt_items)} items")
@@ -332,7 +302,9 @@ def main():
                     "Item ID": iid,
                     "Name": info.get("item_name", "N/A"),
                     "Category": info.get("category", "N/A"),
+                    "Category l1": info.get("category_l1", "N/A"),
                     "Category l2": info.get("category_l2", "N/A"),
+                    "Category l3": info.get("category_l3", "N/A"),
                     "Price (Ref)": info.get("price", "N/A")
                 })
             st.dataframe(pd.DataFrame(gt_list), use_container_width=True)

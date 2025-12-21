@@ -1,12 +1,12 @@
 {
   "paths": {
-    "raw_data_path": "/datastore/uittogether/LuuTru/Thanhld/CS116-DoAn/Phase-2/Pipeline-training3/data/preprocessed-dataset-news",
+    "raw_data_path": "/datastore/uittogether/LuuTru/Thanhld/CS116-DoAn/Phase-2/Pipeline-training3/Thanh_ngl/data/preprocessed-dataset-news",
     "artifacts_dir": "./artifacts",
     "stage1_model_path": "./artifacts/stage1_model.pkl",
     "stage2_model_path": "./artifacts/stage2_model.txt"
   },
   "data_split": {
-    "hist_end_date": "2024-11-30",
+    "hist_end_date": "2024-12-31",
     "hist_days": 120,
     "recent_days": 30,
     "cold_user_lookback_months": 3
