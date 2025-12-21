@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-stage2_rank_svm_lasso.py
+stage2_rank_lgbm.py
 
 Stage-2 Ranking for a 2-stage recommender:
   Stage-1: implicit TFIDFRecommender + CosineRecommender + Trending backfill (already trained)
   Stage-2: Feature augmentation + Pointwise ranking model:
-           L1 feature selection ("Lasso" via LogisticRegression L1) + Linear SVM ranker
+           LightGBM ranker (LGBMClassifier)
 
 This script:
   1) Loads Stage-1 artifacts (best_stage1_meta/tfidf/cosine + best_params.json)
@@ -48,7 +48,7 @@ Design choices (per your request):
   - Evaluation: report BOTH FILTERED and UNFILTERED; FILTERED is primary.
 
 Run:
-  python stage2_rank_svm_lasso.py --config stage2_full_config.json
+  python stage2_rank_lgbm.py --config stage2_full_config.json
 """
 
 from __future__ import annotations
@@ -73,10 +73,14 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.impute import SimpleImputer
-from sklearn.linear_model import LogisticRegression
-from sklearn.feature_selection import SelectFromModel
-from sklearn.svm import LinearSVC
+from sklearn.model_selection import train_test_split
 import joblib
+
+# LightGBM
+try:
+    from lightgbm import LGBMClassifier
+except Exception:
+    LGBMClassifier = None
 
 # --- sklearn compatibility: OneHotEncoder sparse vs sparse_output ---
 def make_onehot_encoder():
@@ -116,6 +120,10 @@ class Stage2Config:
     train_end: str = "2024-11-30"
     recent_begin: str = "2024-12-01"
 
+    # For FILTERED evaluation: filter out items the user bought in this full range (inclusive)
+    filter_hist_begin: str = "2024-01-01"
+    filter_hist_end: str = "2024-12-31"
+
     N_cand: Optional[int] = None
     N_trend: Optional[int] = None
 
@@ -129,15 +137,25 @@ class Stage2Config:
     cache_dir: str = "./artifacts_stage2/cache"
     save_intermediate: bool = True
 
-    batch_users: int = 300000
+    batch_users: int = 5000
     max_users_train: int = 0
     max_users_eval: int = 0
     max_rows_tx_cache: int = 0
 
-    l1_C: float = 0.3
-    svm_C: float = 1.0
-    class_weight: str = "balanced"
-    max_iter_l1: int = 3000
+    # LightGBM params
+    lgbm_objective: str = "binary"
+    lgbm_learning_rate: float = 0.05
+    lgbm_n_estimators: int = 500
+    lgbm_num_leaves: int = 63
+    lgbm_max_depth: int = -1
+    lgbm_min_child_samples: int = 50
+    lgbm_subsample: float = 0.8
+    lgbm_colsample_bytree: float = 0.8
+    lgbm_reg_alpha: float = 0.0
+    lgbm_reg_lambda: float = 0.0
+    lgbm_random_state: int = 42
+    lgbm_early_stopping_rounds: int = 50
+    lgbm_test_size: float = 0.1
 
     groundtruth_pkl: Optional[str] = None
     evaluate_private_test: bool = True
@@ -200,6 +218,31 @@ def _hash_dict(d: dict) -> str:
     return hashlib.md5(s.encode("utf-8")).hexdigest()[:12]
 
 
+
+
+def encode_categoricals_with_maps(df: "pd.DataFrame",
+                                 cat_cols: List[str],
+                                 cat_maps: Optional[Dict[str, Dict[str, int]]] = None
+                                 ) -> Tuple["pd.DataFrame", Dict[str, Dict[str, int]]]:
+    """Encode categorical columns into integer codes with per-column mapping.
+    Unknowns map to -1. Returns (df_encoded, maps)."""
+    import pandas as pd
+    maps_out: Dict[str, Dict[str, int]] = {} if cat_maps is None else {k: dict(v) for k, v in cat_maps.items()}
+
+    for c in cat_cols:
+        if c not in df.columns:
+            continue
+        s = df[c].astype("string").fillna("__MISSING__")
+        if cat_maps is None or c not in maps_out:
+            uniq = pd.unique(s)
+            m = {str(v): i for i, v in enumerate(uniq)}
+            maps_out[c] = m
+        m = maps_out[c]
+        df[c] = s.map(lambda x: m.get(str(x), -1)).astype("int32")
+    return df, maps_out
+
+
+
 def _month_key(dt: datetime) -> str:
     return dt.strftime("%Y-%m")
 
@@ -218,6 +261,17 @@ def _shift_months(dt: datetime, months: int) -> datetime:
 
 
 @dataclass
+
+@dataclass
+class LGBMBundle:
+    model: Any
+    feat_cols: List[str]
+    numeric_cols: List[str]
+    cat_cols: List[str]
+    cat_maps: Dict[str, Dict[str, int]]  # value->code
+
+
+@dataclass
 class Stage1Artifacts:
     users: List[str]
     items: List[str]
@@ -230,22 +284,70 @@ class Stage1Artifacts:
 def load_stage1_artifacts(cfg: Stage2Config) -> Tuple[Stage1Artifacts, dict]:
     run_dir = cfg.stage1_run_dir
     best_params_path = os.path.join(run_dir, cfg.stage1_best_params_json)
-    meta_path = os.path.join(run_dir, cfg.stage1_meta_npz)
+    meta_path = os.path.join(run_dir, cfg.stage1_meta_npz)      # legacy name in config
     tfidf_path = os.path.join(run_dir, cfg.stage1_tfidf_npz)
     cosine_path = os.path.join(run_dir, cfg.stage1_cosine_npz)
 
-    best_params = json.load(open(best_params_path, "r", encoding="utf-8"))
-    meta = np.load(meta_path, allow_pickle=True)
-    users = meta["users"].tolist()
-    items = meta["items"].tolist()
-    trending_idx = meta["trending_idx"].astype(np.int32)
-    config = json.loads(str(meta["config_json"]))
+    # 1) best params (always json)
+    with open(best_params_path, "r", encoding="utf-8") as f:
+        best_params = json.load(f)
 
+    # 2) meta: prefer NPZ if exists, else JSON
+    users: List[str]
+    items: List[str]
+    trending_idx: np.ndarray
+    config: dict
+
+    if os.path.exists(meta_path) and meta_path.lower().endswith(".npz"):
+        meta = np.load(meta_path, allow_pickle=True)
+        users = meta["users"].tolist()
+        items = meta["items"].tolist()
+        trending_idx = meta["trending_idx"].astype(np.int32)
+        config = json.loads(str(meta["config_json"]))
+    else:
+        # Try JSON meta with same basename or known filenames
+        # e.g. cfg.stage1_meta_npz == "best_stage1_meta.npz" -> "best_stage1_meta.json"
+        cand_json = []
+        base_no_ext, _ = os.path.splitext(meta_path)
+        cand_json.append(base_no_ext + ".json")
+        cand_json.append(os.path.join(run_dir, "best_stage1_meta.json"))
+        cand_json.append(os.path.join(run_dir, "stage1_meta.json"))
+
+        meta_json_path = next((p for p in cand_json if os.path.exists(p)), None)
+        if meta_json_path is None:
+            raise FileNotFoundError(
+                f"Stage1 meta not found. Tried: {meta_path} and {cand_json}"
+            )
+
+        with open(meta_json_path, "r", encoding="utf-8") as f:
+            meta_j = json.load(f)
+
+        # Required keys in JSON meta
+        # Expect: users, items, trending_idx, config (or config_json)
+        if "users" not in meta_j or "items" not in meta_j or "trending_idx" not in meta_j:
+            raise KeyError(
+                f"Meta JSON missing keys. Need users/items/trending_idx. Got: {list(meta_j.keys())}"
+            )
+
+        users = list(meta_j["users"])
+        items = list(meta_j["items"])
+        trending_idx = np.asarray(meta_j["trending_idx"], dtype=np.int32)
+
+        if "config" in meta_j and isinstance(meta_j["config"], dict):
+            config = meta_j["config"]
+        elif "config_json" in meta_j:
+            # config_json might be dict or stringified json
+            cj = meta_j["config_json"]
+            config = cj if isinstance(cj, dict) else json.loads(str(cj))
+        else:
+            # if you didn't store config in json meta, fall back to best_params as config-ish
+            config = {}
+
+    # 3) load implicit models
     tfidf = TFIDFRecommender.load(tfidf_path)
     cosine = CosineRecommender.load(cosine_path)
 
     return Stage1Artifacts(users, items, trending_idx, config, tfidf, cosine), best_params
-
 
 def load_min_transactions(cfg: Stage2Config, begin: datetime, end: datetime) -> pl.DataFrame:
     key = _hash_dict({
@@ -277,9 +379,10 @@ def load_min_transactions(cfg: Stage2Config, begin: datetime, end: datetime) -> 
         col_or_lit("payment", "__MISSING__", pl.Utf8),
         col_or_lit("location", -1, pl.Int64),
         col_or_lit("discount_rate", 0.0, pl.Float64).fill_null(0.0).fill_nan(0.0),
+        col_or_lit("category_l2", "__MISSING__", pl.Utf8),
     ]).filter(
         pl.col("created_date").is_between(pl.lit(begin.date(), pl.Date), pl.lit(end.date(), pl.Date), closed="both")
-    ).select(["customer_id","item_id","created_date","quantity","price","channel","payment","location","discount_rate"])
+    ).select(["customer_id","item_id","created_date","quantity","price","channel","payment","location","discount_rate", "category_l2"])
 
     df = tx.collect(streaming=True)
     if cfg.max_rows_tx_cache and cfg.max_rows_tx_cache > 0:
@@ -511,69 +614,61 @@ def load_engineered_features(cfg: Stage2Config) -> Dict[str, pl.DataFrame]:
 
 
 def build_hist_aggs(cfg: Stage2Config, df_tx: pl.DataFrame, items_df: pl.DataFrame,
-                    train_begin: datetime, train_end: datetime) -> Tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, pl.DataFrame]:
-    key = _hash_dict({"train_begin": train_begin.strftime("%Y-%m-%d"), "train_end": train_end.strftime("%Y-%m-%d")})
-    path = os.path.join(cfg.cache_dir, f"hist_aggs_{key}.parquet")
-    if os.path.exists(path):
-        log(f"[CACHE] Load hist aggs -> {path}")
-        aggs = pl.read_parquet(path)
-        ui = aggs.filter(pl.col("_k")=="ui").drop("_k")
-        u = aggs.filter(pl.col("_k")=="u").drop("_k")
-        it = aggs.filter(pl.col("_k")=="i").drop("_k")
-        uc = aggs.filter(pl.col("_k")=="uc").drop("_k")
-        return ui, u, it, uc
+                    train_begin: datetime, train_end: datetime) -> pl.DataFrame:
+    """Build minimal HIST aggregates from transactions, per (customer_id, item_id).
 
-    log("[5/9] Build HIST aggregates ...")
+    Only keep transaction-derived features requested:
+      - quantity (sum over HIST)
+      - location (most recent location)
+      - category_l2 (most recent tx category_l2)
+    """
+    key = _hash_dict({"train_begin": train_begin.strftime("%Y-%m-%d"), "train_end": train_end.strftime("%Y-%m-%d"), "v": "min_tx"})
+    path = os.path.join(cfg.cache_dir, f"hist_ui_min_{key}.parquet")
+    if os.path.exists(path):
+        log(f"[CACHE] Load hist ui min -> {path}")
+        return pl.read_parquet(path)
+
+    log("[5/9] Build HIST minimal aggregates (ui) ...")
     hist = df_tx.filter(
         pl.col("created_date").is_between(pl.lit(train_begin.date(), pl.Date), pl.lit(train_end.date(), pl.Date), closed="both")
-    ).with_columns((pl.col("quantity") * pl.col("price")).alias("spent_row")) \
-     .join(items_df.select(["item_id","category_l1","brand"]), on="item_id", how="left")
+    )
 
-    end_date = train_end.date()
+    # Ensure required cols exist
+    cols = set(hist.columns)
+    if "location" not in cols:
+        hist = hist.with_columns(pl.lit(-1).cast(pl.Int64).alias("location"))
+    if "category_l2" not in cols:
+        hist = hist.with_columns(pl.lit("__MISSING__").cast(pl.Utf8).alias("category_l2"))
+    if "quantity" not in cols:
+        hist = hist.with_columns(pl.lit(0.0).cast(pl.Float64).alias("quantity"))
+
+    # last observation per (u,i)
+    last = (
+        hist.sort(["customer_id", "item_id", "created_date"])
+            .group_by(["customer_id", "item_id"], maintain_order=True)
+            .tail(1)
+            .select(["customer_id", "item_id",
+                     pl.col("location").alias("ui_last_location"),
+                     pl.col("category_l2").alias("ui_last_tx_category_l2"),
+                     pl.col("created_date").alias("ui_last_date")])
+    )
 
     ui = hist.group_by(["customer_id","item_id"]).agg([
-        pl.len().alias("ui_cnt"),
         pl.col("quantity").sum().alias("ui_sum_qty"),
-        pl.col("spent_row").sum().alias("ui_sum_spent"),
-        pl.col("created_date").max().alias("ui_last_date"),
-    ]).with_columns(((pl.lit(end_date)-pl.col("ui_last_date")).dt.total_days().cast(pl.Int32)).alias("ui_recency_days")).drop("ui_last_date")
+    ]).join(last, on=["customer_id","item_id"], how="left")
 
-    u = hist.group_by(["customer_id"]).agg([
-        pl.len().alias("u_cnt"),
-        pl.col("quantity").sum().alias("u_sum_qty"),
-        pl.col("spent_row").sum().alias("u_sum_spent"),
-        pl.col("item_id").n_unique().alias("u_n_unique_items"),
-        pl.col("created_date").max().alias("u_last_date"),
-    ]).with_columns(((pl.lit(end_date)-pl.col("u_last_date")).dt.total_days().cast(pl.Int32)).alias("u_recency_days")).drop("u_last_date")
+    end_date = train_end.date()
+    ui = ui.with_columns(
+        ((pl.lit(end_date) - pl.col("ui_last_date")).dt.total_days().cast(pl.Int32)).alias("ui_recency_days")
+    ).drop("ui_last_date")
 
-    it = hist.group_by(["item_id"]).agg([
-        pl.len().alias("i_cnt"),
-        pl.col("quantity").sum().alias("i_sum_qty"),
-        pl.col("spent_row").sum().alias("i_sum_spent"),
-        pl.col("customer_id").n_unique().alias("i_n_unique_users"),
-        pl.col("created_date").max().alias("i_last_date"),
-    ]).with_columns(((pl.lit(end_date)-pl.col("i_last_date")).dt.total_days().cast(pl.Int32)).alias("i_recency_days")).drop("i_last_date")
-
-    uc = hist.group_by(["customer_id","category_l1"]).agg([
-        pl.len().alias("uc_cnt"),
-        pl.col("spent_row").sum().alias("uc_sum_spent"),
-        pl.col("created_date").max().alias("uc_last_date"),
-    ]).with_columns(((pl.lit(end_date)-pl.col("uc_last_date")).dt.total_days().cast(pl.Int32)).alias("uc_recency_days")).drop("uc_last_date")
-
-    ag = pl.concat([
-        ui.with_columns(pl.lit("ui").alias("_k")),
-        u.with_columns(pl.lit("u").alias("_k")),
-        it.with_columns(pl.lit("i").alias("_k")),
-        uc.with_columns(pl.lit("uc").alias("_k")),
-    ], how="diagonal_relaxed")
-    ag.write_parquet(path)
-    log(f"[SAVE] Hist aggs -> {path}")
-    return ui, u, it, uc
-
+    ui.write_parquet(path)
+    log(f"[SAVE] Hist ui min -> {path}")
+    return ui
 
 def build_feature_label(cfg: Stage2Config, candidates: pl.DataFrame, df_tx: pl.DataFrame,
                         items_df: pl.DataFrame, users_df: pl.DataFrame,
-                        ui_agg: pl.DataFrame, u_agg: pl.DataFrame, i_agg: pl.DataFrame, uc_agg: pl.DataFrame,
+                        ui_agg: pl.DataFrame,
                         feat_tables: Dict[str, pl.DataFrame],
                         train_begin: datetime, train_end: datetime,
                         recent_begin: datetime, recent_end: datetime) -> pl.DataFrame:
@@ -592,12 +687,12 @@ def build_feature_label(cfg: Stage2Config, candidates: pl.DataFrame, df_tx: pl.D
         return pl.read_parquet(sampled_path)
 
     log("[7/9] Build feature-label (joins + label + N_neg sampling) ...")
-    fl = safe_join(candidates, items_df, on=["item_id"], how="left", suffix="_item")
-    fl = safe_join(fl, users_df, on=["customer_id"], how="left", suffix="_user")
+    # Reduce join payload: select only needed columns
+    items_small = items_df.select(["item_id","category_l1","category_l2"])
+    users_small = users_df.select(["customer_id","province","membership"])
+    fl = safe_join(candidates, items_small, on=["item_id"], how="left", suffix="_item")
+    fl = safe_join(fl, users_small, on=["customer_id"], how="left", suffix="_user")
 
-    fl = fl.with_columns(((pl.lit(train_end.date()) - pl.col("install_datetime")).dt.total_days().cast(pl.Int32)).alias("tenure_days")).with_columns(
-        pl.col("tenure_days").fill_null(-1)
-    )
 
     if "price_segment" in feat_tables:
         fl = fl.join(feat_tables["price_segment"], on="item_id", how="left")
@@ -627,89 +722,117 @@ def build_feature_label(cfg: Stage2Config, candidates: pl.DataFrame, df_tx: pl.D
         fl = fl.with_columns(pl.lit(9999).alias("rank_top10_by_cat_month"))
 
     fl = safe_join(fl, ui_agg, on=["customer_id","item_id"], how="left", suffix="_ui")
-    fl = safe_join(fl, u_agg, on=["customer_id"], how="left", suffix="_u")
-    fl = safe_join(fl, i_agg, on=["item_id"], how="left", suffix="_i")
-    fl = safe_join(fl, uc_agg, on=["customer_id","category_l1"], how="left", suffix="_uc")
-
-    for c in ["ui_cnt","ui_sum_qty","ui_sum_spent","u_cnt","u_sum_qty","u_sum_spent","u_n_unique_items",
-              "i_cnt","i_sum_qty","i_sum_spent","i_n_unique_users","uc_cnt","uc_sum_spent"]:
-        if c in fl.columns: fl = fl.with_columns(pl.col(c).fill_null(0))
-    for c in ["ui_recency_days","u_recency_days","i_recency_days","uc_recency_days"]:
-        if c in fl.columns: fl = fl.with_columns(pl.col(c).fill_null(9999))
 
     recent_pairs = df_tx.filter(
         pl.col("created_date").is_between(pl.lit(recent_begin.date(), pl.Date), pl.lit(recent_end.date(), pl.Date), closed="both")
     ).select(["customer_id","item_id"]).unique().with_columns(pl.lit(1, pl.Int8).alias("Y"))
     fl = fl.join(recent_pairs, on=["customer_id","item_id"], how="left").with_columns(pl.col("Y").fill_null(0).cast(pl.Int8))
 
-    # negative sampling per user
-    rng = np.random.default_rng(int(cfg.random_state))
-    fl_min = fl.select(["customer_id","item_id","Y"])
-    users = fl_min["customer_id"].unique().to_list()
-    if cfg.max_users_train and cfg.max_users_train > 0:
-        users = users[:int(cfg.max_users_train)]
+    # negative sampling per user (FAST: Polars group sampling)
+    #  - keep all positives
+    #  - sample N_neg negatives per user from that user's candidate negatives
+    log(f"[7/9] Negative sampling (polars) per user: N_neg={cfg.N_neg}")
+    pos = fl.filter(pl.col("Y") == 1)
 
-    keep = set()
-    for u in tqdm(users, desc="NegSampling"):
-        dfu = fl_min.filter(pl.col("customer_id")==u)
-        pos = dfu.filter(pl.col("Y")==1)["item_id"].to_list()
-        neg = dfu.filter(pl.col("Y")==0)["item_id"].to_list()
-        for it in pos:
-            keep.add((str(u), str(it)))
-        if cfg.N_neg > 0 and len(neg) > 0:
-            k = min(int(cfg.N_neg), len(neg))
-            samp = rng.choice(np.array(neg, dtype=object), size=k, replace=False).tolist()
-            for it in samp:
-                keep.add((str(u), str(it)))
+    if cfg.N_neg <= 0:
+        fl_s = pos
+    else:
+        # shuffle within each user using random key, then take head(N_neg) per user
+        neg = (
+            fl.filter(pl.col("Y") == 0)
+              .with_columns(pl.concat_str([pl.col("customer_id"), pl.col("item_id"), pl.lit(str(cfg.random_state))]).hash().alias("_r"))
+              .sort(["customer_id", "_r"])
+              .group_by("customer_id", maintain_order=True)
+              .head(int(cfg.N_neg))
+              .drop("_r")
+        )
+        fl_s = pl.concat([pos, neg], how="vertical")
 
-    keep_df = pl.DataFrame(list(keep), schema=[("customer_id", pl.Utf8), ("item_id", pl.Utf8)])
-    fl_s = fl.join(keep_df, on=["customer_id","item_id"], how="inner")
     fl_s.write_parquet(sampled_path)
     log(f"[SAVE] Feature-label sampled -> {sampled_path}")
     return fl_s
 
 
 def train_model(cfg: Stage2Config, fl: pl.DataFrame) -> Any:
-    log("[8/9] Train ranking model (L1 selection + Linear SVM) ...")
-    pbar = tqdm(total=3, desc="Stage2 train", leave=True)
-    key_cols = {"customer_id","item_id","Y","install_datetime","trend_month"}
+    log("[8/9] Train ranking model (LightGBM) ...")
+    if LGBMClassifier is None:
+        raise ImportError("lightgbm is not available. Please install lightgbm in your environment.")
+
+    key_cols = {"customer_id", "item_id", "Y", "install_datetime", "trend_month"}
     feat_cols = [c for c in fl.columns if c not in key_cols]
 
-    numeric, categorical = [], []
+    numeric_cols, cat_cols = [], []
     for c in feat_cols:
         dt = fl.schema[c]
-        if dt in (pl.Int8,pl.Int16,pl.Int32,pl.Int64,pl.UInt32,pl.UInt64,pl.Float32,pl.Float64):
-            numeric.append(c)
+        if dt in (pl.Int8, pl.Int16, pl.Int32, pl.Int64, pl.UInt32, pl.UInt64, pl.Float32, pl.Float64, pl.Boolean):
+            numeric_cols.append(c)
         else:
-            categorical.append(c)
+            cat_cols.append(c)
 
+    pbar = tqdm(total=3, desc="Stage2 train (lgbm)", leave=True)
     dfp = fl.select(["Y"] + feat_cols).to_pandas()
-    pbar.update(1)  # data materialized
+    pbar.update(1)
+
     y = dfp["Y"].astype(int).values
     X = dfp.drop(columns=["Y"])
 
-    num_pipe = Pipeline([("imputer", SimpleImputer(strategy="median")),
-                         ("scaler", StandardScaler(with_mean=False))])
-    cat_pipe = Pipeline([("imputer", SimpleImputer(strategy="most_frequent")),
-                         ("onehot", make_onehot_encoder())])
+    for c in numeric_cols:
+        if c in X.columns:
+            X[c] = X[c].astype("float32")
+            X[c] = X[c].fillna(0.0)
 
-    pre = ColumnTransformer([("num", num_pipe, numeric),
-                             ("cat", cat_pipe, categorical)],
-                            remainder="drop", sparse_threshold=0.3)
+    X, cat_maps = encode_categoricals_with_maps(X, cat_cols, cat_maps=None)
+    pbar.update(1)
 
-    l1 = LogisticRegression(penalty="l1", C=float(cfg.l1_C), solver="saga",
-                            max_iter=int(cfg.max_iter_l1), n_jobs=-1,
-                            class_weight=("balanced" if cfg.class_weight=="balanced" else None))
-    selector = SelectFromModel(l1, prefit=False)
-    svm = LinearSVC(C=float(cfg.svm_C), class_weight=("balanced" if cfg.class_weight=="balanced" else None))
+    test_size = float(getattr(cfg, "lgbm_test_size", 0.1))
+    X_tr, X_va, y_tr, y_va = train_test_split(
+        X, y, test_size=test_size,
+        random_state=int(getattr(cfg, "lgbm_random_state", cfg.random_state)),
+        stratify=y
+    )
 
-    model = Pipeline([("pre", pre), ("select", selector), ("svm", svm)])
-    pbar.update(1)  # pipeline built
-    model.fit(X, y)
-    pbar.update(1)  # model fit
+    n_pos = max(1, int((y_tr == 1).sum()))
+    n_neg = max(1, int((y_tr == 0).sum()))
+    scale_pos_weight = n_neg / n_pos
+
+    model = LGBMClassifier(
+        objective=str(getattr(cfg, "lgbm_objective", "binary")),
+        learning_rate=float(getattr(cfg, "lgbm_learning_rate", 0.05)),
+        n_estimators=int(getattr(cfg, "lgbm_n_estimators", 500)),
+        num_leaves=int(getattr(cfg, "lgbm_num_leaves", 63)),
+        max_depth=int(getattr(cfg, "lgbm_max_depth", -1)),
+        min_child_samples=int(getattr(cfg, "lgbm_min_child_samples", 50)),
+        subsample=float(getattr(cfg, "lgbm_subsample", 0.8)),
+        colsample_bytree=float(getattr(cfg, "lgbm_colsample_bytree", 0.8)),
+        reg_alpha=float(getattr(cfg, "lgbm_reg_alpha", 0.0)),
+        reg_lambda=float(getattr(cfg, "lgbm_reg_lambda", 0.0)),
+        random_state=int(getattr(cfg, "lgbm_random_state", cfg.random_state)),
+        n_jobs=-1,
+        scale_pos_weight=float(scale_pos_weight),
+    )
+
+    try:
+        import lightgbm as lgb
+        callbacks = [lgb.early_stopping(int(getattr(cfg, "lgbm_early_stopping_rounds", 50)), verbose=False)]
+    except Exception:
+        callbacks = []
+
+    model.fit(
+        X_tr, y_tr,
+        eval_set=[(X_va, y_va)],
+        eval_metric="binary_logloss",
+        callbacks=callbacks,
+    )
+    pbar.update(1)
     pbar.close()
-    return model
 
+    return LGBMBundle(
+        model=model,
+        feat_cols=feat_cols,
+        numeric_cols=numeric_cols,
+        cat_cols=cat_cols,
+        cat_maps=cat_maps,
+    )
 
 def dcg_at_k(rels: List[int], k: int) -> float:
     s = 0.0
@@ -774,59 +897,68 @@ def precision_at_k_userwise_batched(pred: Dict[str, List[str]],
     return mean_prec, len(cold_start_users), cold_start_users
 
 
-def score_topk_batched(cfg: Stage2Config, model: Any, feature_table: pl.DataFrame, users: List[str]) -> Dict[str, List[str]]:
+def score_topk(cfg: Stage2Config, model: Any, feature_table: pl.DataFrame, users: List[str]) -> Dict[str, List[str]]:
+    """Score all (user,item) rows in feature_table and return top-k items per user.
+    Works with LGBMBundle (recommended) or a raw sklearn-like model.
+    """
     topk = int(cfg.topk)
-    bs = max(1, int(getattr(cfg, "batch_users", 5000)))
+
+    # Bundle handling (ensures consistent feature schema and categorical encoding)
+    bundle = model if isinstance(model, LGBMBundle) else None
+    booster = bundle.model if bundle is not None else model
 
     key_cols = ["customer_id", "item_id"]
-    drop = {"Y", "install_datetime", "trend_month"}
-    feat_cols = [c for c in feature_table.columns if c not in set(key_cols) and c not in drop]
+    drop_cols = {"Y", "install_datetime", "trend_month"}
+
+    if bundle is not None:
+        feat_cols = list(bundle.feat_cols)
+    else:
+        feat_cols = [c for c in feature_table.columns if c not in set(key_cols) and c not in drop_cols]
+
+    # Ensure all feat_cols exist in feature_table (if missing, create with nulls)
+    missing = [c for c in feat_cols if c not in feature_table.columns]
+    if missing:
+        feature_table = feature_table.with_columns([pl.lit(None).alias(c) for c in missing])
+
+    dfp = feature_table.select(key_cols + feat_cols).to_pandas()
+    X = dfp[feat_cols]
+
+    if bundle is not None:
+        # Encode categoricals using training maps (unknown -> -1)
+        X, _ = encode_categoricals_with_maps(X, bundle.cat_cols, cat_maps=bundle.cat_maps)
+        # Numeric casting/fill
+        for c in bundle.numeric_cols:
+            if c in X.columns:
+                X[c] = X[c].astype("float32")
+                X[c] = X[c].fillna(0.0)
+        scores = booster.predict_proba(X)[:, 1]
+    else:
+        scores = (booster.predict_proba(X)[:, 1] if hasattr(booster, "predict_proba") else booster.predict(X))
+
+    cust = dfp["customer_id"].astype(str).values
+    item = dfp["item_id"].astype(str).values
+
+    # Sort by (customer_id asc, score desc)
+    order = np.lexsort((-scores, cust))
 
     out: Dict[str, List[str]] = {}
+    cur_u: Optional[str] = None
+    buf: List[str] = []
+    for u, it in zip(cust[order], item[order]):
+        if cur_u is None:
+            cur_u = u
+        if u != cur_u:
+            out[cur_u] = buf[:topk]
+            cur_u = u
+            buf = []
+        if len(buf) < topk:
+            buf.append(it)
+    if cur_u is not None:
+        out[cur_u] = buf[:topk]
 
-    # tqdm theo batch user
-    for start in tqdm(range(0, len(users), bs), desc="Scoring topk (batched users)"):
-        batch_users = users[start : start + bs]
-        ft_b = feature_table.filter(pl.col("customer_id").is_in(batch_users))
-
-        if ft_b.height == 0:
-            for u in batch_users:
-                out.setdefault(str(u), [])
-            continue
-
-        dfp = ft_b.select(key_cols + feat_cols).to_pandas()
-        X = dfp[feat_cols]
-
-        scores = model.decision_function(X)
-
-        cust = dfp["customer_id"].astype(str).values
-        item = dfp["item_id"].astype(str).values
-
-        # sort theo user, score desc
-        order = np.lexsort((-scores, cust))
-        cust_s = cust[order]
-        item_s = item[order]
-
-        cur = None
-        buf = []
-
-        for u, it in zip(cust_s, item_s):
-            if cur is None:
-                cur = u
-            if u != cur:
-                out[cur] = buf[:topk]
-                cur = u
-                buf = []
-            if len(buf) < topk:
-                buf.append(it)
-
-        if cur is not None:
-            out[cur] = buf[:topk]
-
-        # đảm bảo user nào cũng có entry
-        for u in batch_users:
-            out.setdefault(str(u), [])
-
+    # Ensure all requested users appear
+    for u in users:
+        out.setdefault(str(u), [])
     return out
 
 
@@ -875,7 +1007,14 @@ def eval_metrics(cfg: Stage2Config, pred: Dict[str, List[str]], gt_recent: Dict[
     }
 
 
-def eval_private(cfg: Stage2Config, model: Any, feature_table: pl.DataFrame) -> Optional[dict]:
+def eval_private(cfg: Stage2Config,
+                 model: Any,
+                 feature_table: pl.DataFrame,
+                 hist_filter: Optional[Dict[str, set]] = None) -> Optional[dict]:
+    """Evaluate on private test groundtruth.pkl.
+    Reports BOTH FILTERED and UNFILTERED metrics (Precision@K, NDCG@K) and cold-start users.
+    FILTERED means: remove items already bought in hist_filter from both GT and predictions.
+    """
     if not cfg.groundtruth_pkl or not cfg.evaluate_private_test:
         return None
     if not os.path.exists(cfg.groundtruth_pkl):
@@ -886,13 +1025,13 @@ def eval_private(cfg: Stage2Config, model: Any, feature_table: pl.DataFrame) -> 
     gt: Dict[str, set] = {}
     if isinstance(gt_raw, dict):
         for u, items in gt_raw.items():
-            if isinstance(items, (list,set,tuple)):
+            if isinstance(items, (list, set, tuple)):
                 gt[str(u)] = set(map(str, items))
     elif isinstance(gt_raw, list):
         for row in gt_raw:
             u = str(row.get("customer_id"))
             items = row.get("item_id")
-            if isinstance(items, (list,set,tuple)):
+            if isinstance(items, (list, set, tuple)):
                 gt[u] = set(map(str, items))
     else:
         log("[WARN] Unknown groundtruth.pkl format; skip.")
@@ -903,21 +1042,83 @@ def eval_private(cfg: Stage2Config, model: Any, feature_table: pl.DataFrame) -> 
         users = users[:int(cfg.max_users_eval)]
         gt = {u: gt[u] for u in users}
 
+    # Score for private users
     ft = feature_table.filter(pl.col("customer_id").is_in(users))
-    pred = score_topk_batched(cfg, model, ft, users)
+    # Preview feature table
+    try:
+        log("[PREVIEW] Feature table (first 5 rows):")
+        print(ft.head(5), flush=True)
+    except Exception as e:
+        log(f"[WARN] Could not preview feature table: {e}")
 
+    pred = score_topk(cfg, model, ft, users)
 
     k = int(cfg.topk)
-    precs, ndcgs = [], []
-    n = 0
+    hist_filter = hist_filter or {}
+
+    # UNFILTERED metrics
+    prec_u, ndcg_u = [], []
+    n_u = 0
     for u, gt_set in gt.items():
-        n += 1
         p = pred.get(u, [])
-        precs.append(precision_at_k(p, gt_set, k))
-        ndcgs.append(ndcg_at_k(p, gt_set, k))
-    if n == 0:
-        return {"n_users":0,"precision":0.0,"ndcg":0.0,"k":k}
-    return {"n_users":n,"precision":float(np.mean(precs)),"ndcg":float(np.mean(ndcgs)),"k":k}
+        if not gt_set:
+            continue
+        n_u += 1
+        prec_u.append(precision_at_k(p, gt_set, k))
+        ndcg_u.append(ndcg_at_k(p, gt_set, k))
+    unfiltered = {
+        "n_users": int(n_u),
+        "precision": float(np.mean(prec_u)) if prec_u else 0.0,
+        "ndcg": float(np.mean(ndcg_u)) if ndcg_u else 0.0,
+        "k": k,
+    }
+
+    # FILTERED metrics (remove already-bought items from GT and predictions)
+    prec_f, ndcg_f = [], []
+    n_f = 0
+    for u, gt_set in gt.items():
+        h = hist_filter.get(u, set())
+        gt_f = set(gt_set) - set(h)
+        if not gt_f:
+            continue
+        p = pred.get(u, [])
+        if p:
+            p = [it for it in p if it not in h]
+        n_f += 1
+        prec_f.append(precision_at_k(p, gt_f, k))
+        ndcg_f.append(ndcg_at_k(p, gt_f, k))
+    filtered = {
+        "n_users": int(n_f),
+        "precision": float(np.mean(prec_f)) if prec_f else 0.0,
+        "ndcg": float(np.mean(ndcg_f)) if ndcg_f else 0.0,
+        "k": k,
+    }
+
+    # Custom user-wise precision@k + cold-start counts
+    prec_f_custom, ncs_f, cold_f = precision_at_k_userwise_batched(
+        pred=pred, gt=gt, hist=hist_filter,
+        filter_bought_items=True, K=k,
+        batch_users=int(getattr(cfg, "batch_users", 5000)),
+        show_progress=True
+    )
+    prec_u_custom, ncs_u, cold_u = precision_at_k_userwise_batched(
+        pred=pred, gt=gt, hist=hist_filter,
+        filter_bought_items=False, K=k,
+        batch_users=int(getattr(cfg, "batch_users", 5000)),
+        show_progress=True
+    )
+
+    return {
+        "filtered": filtered,
+        "unfiltered": unfiltered,
+        "precision_custom_filtered": float(prec_f_custom),
+        "precision_custom_unfiltered": float(prec_u_custom),
+        "cold_start_users_filtered": int(ncs_f),
+        "cold_start_users_unfiltered": int(ncs_u),
+        "cold_start_user_ids_filtered": cold_f[:200],
+        "cold_start_user_ids_unfiltered": cold_u[:200],
+    }
+
 
 
 def main(config_path: str) -> None:
@@ -925,7 +1126,7 @@ def main(config_path: str) -> None:
     _ensure_dir(cfg.out_dir); _ensure_dir(cfg.cache_dir)
     run_dir = os.path.join(cfg.out_dir, cfg.run_name); _ensure_dir(run_dir)
 
-    log("==== Stage2 Ranking (SVM + L1 selection) ====")
+    log("==== Stage2 Ranking (LightGBM) ====")
     log(f"Config: {config_path}")
     log(f"Run dir: {run_dir}")
 
@@ -960,13 +1161,13 @@ def main(config_path: str) -> None:
     candidates = generate_candidates(cfg, art, users, csr, N_cand, N_trend)
 
     feat_tables = load_engineered_features(cfg)
-    ui_agg, u_agg, i_agg, uc_agg = build_hist_aggs(cfg, df_tx, items_df, train_begin, train_end)
+    ui_agg = build_hist_aggs(cfg, df_tx, items_df, train_begin, train_end)
 
-    fl = build_feature_label(cfg, candidates, df_tx, items_df, users_df, ui_agg, u_agg, i_agg, uc_agg,
+    fl = build_feature_label(cfg, candidates, df_tx, items_df, users_df, ui_agg,
                              feat_tables, train_begin, train_end, recent_begin, recent_end)
 
     model = train_model(cfg, fl)
-    model_path = os.path.join(run_dir, "stage2_model.joblib")
+    model_path = os.path.join(run_dir, "stage2_model_lgbm.joblib")
     joblib.dump(model, model_path)
     log(f"[SAVE] Model -> {model_path}")
 
@@ -978,9 +1179,10 @@ def main(config_path: str) -> None:
         ft = pl.read_parquet(full_path)
     else:
         log("[EVAL] Build full feature table ...")
-        ft = safe_join(candidates, items_df, on=["item_id"], how="left", suffix="_item")
-        ft = safe_join(ft, users_df, on=["customer_id"], how="left", suffix="_user")
-        ft = ft.with_columns(((pl.lit(train_end.date()) - pl.col("install_datetime")).dt.total_days().cast(pl.Int32)).alias("tenure_days")).with_columns(pl.col("tenure_days").fill_null(-1))
+        items_small = items_df.select(["item_id","category_l1","category_l2"])
+        users_small = users_df.select(["customer_id","province","membership"])
+        ft = safe_join(candidates, items_small, on=["item_id"], how="left", suffix="_item")
+        ft = safe_join(ft, users_small, on=["customer_id"], how="left", suffix="_user")
         if "price_segment" in feat_tables: ft = ft.join(feat_tables["price_segment"], on="item_id", how="left")
         if "buy_segment" in feat_tables: ft = ft.join(feat_tables["buy_segment"], on="customer_id", how="left")
         if "luxury_level" in feat_tables: ft = ft.join(feat_tables["luxury_level"], on="customer_id", how="left")
@@ -1003,51 +1205,43 @@ def main(config_path: str) -> None:
             ft = ft.with_columns(pl.lit(9999).alias("rank_top10_by_cat_month"))
 
         ft = safe_join(ft, ui_agg, on=["customer_id","item_id"], how="left", suffix="_ui")
-        ft = safe_join(ft, u_agg, on=["customer_id"], how="left", suffix="_u")
-        ft = safe_join(ft, i_agg, on=["item_id"], how="left", suffix="_i")
-        ft = safe_join(ft, uc_agg, on=["customer_id","category_l1"], how="left", suffix="_uc")
-
-        for c in ["ui_cnt","ui_sum_qty","ui_sum_spent","u_cnt","u_sum_qty","u_sum_spent","u_n_unique_items",
-                  "i_cnt","i_sum_qty","i_sum_spent","i_n_unique_users","uc_cnt","uc_sum_spent"]:
-            if c in ft.columns: ft = ft.with_columns(pl.col(c).fill_null(0))
-        for c in ["ui_recency_days","u_recency_days","i_recency_days","uc_recency_days"]:
-            if c in ft.columns: ft = ft.with_columns(pl.col(c).fill_null(9999))
 
         ft.write_parquet(full_path)
         log(f"[SAVE] Full feature table -> {full_path}")
 
-    pred = score_topk_batched(cfg, model, ft, users)
-    hist = build_user_item_sets(df_tx, train_begin, train_end)
+    # Preview feature table
+    try:
+        log("[PREVIEW] Feature table (first 5 rows):")
+        print(ft.head(5), flush=True)
+    except Exception as e:
+        log(f"[WARN] Could not preview feature table: {e}")
 
-    # Custom Precision@K (user-wise) + cold-start reporting (batched + tqdm)
-    prec_f_custom, ncs_f, _ = precision_at_k_userwise_batched(
-        pred=pred, gt=gt_recent, hist=hist, filter_bought_items=True, K=int(cfg.topk),
-        batch_users=int(getattr(cfg, "batch_users", 5000)), show_progress=True
-    )
-    prec_u_custom, ncs_u, _ = precision_at_k_userwise_batched(
-        pred=pred, gt=gt_recent, hist=hist, filter_bought_items=False, K=int(cfg.topk),
-        batch_users=int(getattr(cfg, "batch_users", 5000)), show_progress=True
-    )
-    log(f"[CUSTOM PRECISION@{cfg.topk}] FILTERED={prec_f_custom:.6f} | cold-start users={ncs_f}")
-    log(f"[CUSTOM PRECISION@{cfg.topk}] UNFILTERED={prec_u_custom:.6f} | cold-start users={ncs_u}")
+    pred = score_topk(cfg, model, ft, users)
 
-    m_f = eval_metrics(cfg, pred, gt_recent, hist, "filtered")
-    m_u = eval_metrics(cfg, pred, gt_recent, hist, "unfiltered")
+    # Build FILTER history over full year (or configured range) for FILTERED metrics
+    filter_begin = _parse_date(cfg.filter_hist_begin)
+    filter_end = _parse_date(cfg.filter_hist_end)
+    df_tx_filter = load_min_transactions(cfg, filter_begin, filter_end)
+    hist_year = build_user_item_sets(df_tx_filter, filter_begin, filter_end)
+    hist = hist_year  # backward-compat
+    # NOTE: RECENT is used to create training labels; do not treat RECENT metrics as the primary objective.
 
-    metrics = {"offline_filtered": m_f, "offline_unfiltered": m_u,
-               "precision_custom_filtered": prec_f_custom,
-               "precision_custom_unfiltered": prec_u_custom,
-               "cold_start_users_filtered": int(ncs_f),
-               "cold_start_users_unfiltered": int(ncs_u)}
+    m_f = eval_metrics(cfg, pred, gt_recent, hist_year, "filtered")
+    m_u = eval_metrics(cfg, pred, gt_recent, hist_year, "unfiltered")
+
+    metrics = {"offline_filtered": m_f, "offline_unfiltered": m_u}
     log("===== OFFLINE METRICS (RECENT) =====")
     log(f"FILTERED   P@{cfg.topk}={m_f['precision']:.6f}  R@{cfg.topk}={m_f['recall']:.6f}  Hit@{cfg.topk}={m_f['hit']:.6f}  NDCG@{cfg.topk}={m_f['ndcg']:.6f}  n_users={m_f['n_users']:,}")
     log(f"UNFILTERED P@{cfg.topk}={m_u['precision']:.6f}  R@{cfg.topk}={m_u['recall']:.6f}  Hit@{cfg.topk}={m_u['hit']:.6f}  NDCG@{cfg.topk}={m_u['ndcg']:.6f}  n_users={m_u['n_users']:,}")
 
-    priv = eval_private(cfg, model, ft)
+    priv = eval_private(cfg, model, ft, hist_year)
     if priv is not None:
         metrics["private_test"] = priv
         log("===== PRIVATE TEST (groundtruth.pkl) =====")
-        log(f"P@{cfg.topk}={priv['precision']:.6f}  NDCG@{cfg.topk}={priv['ndcg']:.6f}  n_users={priv['n_users']:,}")
+        log(f"FILTERED   P@{cfg.topk}={priv['filtered']['precision']:.6f}  NDCG@{cfg.topk}={priv['filtered']['ndcg']:.6f}  n_users={priv['filtered']['n_users']:,}  cold_start={priv['cold_start_users_filtered']}")
+        log(f"UNFILTERED P@{cfg.topk}={priv['unfiltered']['precision']:.6f}  NDCG@{cfg.topk}={priv['unfiltered']['ndcg']:.6f}  n_users={priv['unfiltered']['n_users']:,}  cold_start={priv['cold_start_users_unfiltered']}")
+        log(f"[CUSTOM PRECISION@{cfg.topk}] FILTERED={priv['precision_custom_filtered']:.6f} | cold-start users={priv['cold_start_users_filtered']}")
+        log(f"[CUSTOM PRECISION@{cfg.topk}] UNFILTERED={priv['precision_custom_unfiltered']:.6f} | cold-start users={priv['cold_start_users_unfiltered']}")
 
     metrics_path = os.path.join(run_dir, "stage2_metrics.json")
     with open(metrics_path, "w", encoding="utf-8") as f:
