@@ -8,6 +8,7 @@ preprocessed-feature
 preprocessed-feature1
 preprocessing data
 transaction_2024
+Feature engineering
 __pycache__/
 *.parquet
 *.pkl
