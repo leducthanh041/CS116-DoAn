@@ -1,0 +1,51 @@
+{
+  "data_dir": "./preprocessed-dataset",
+  "new_feature_dir": "./new-feature",
+  "out_dir": "./artifacts/stage2_feature_label",
+  "snapshot_start": "2024-12-31 23:59:59",
+  "snapshot_end": "2024-12-31 23:59:59",
+  "snapshot_granularity": "month_end",
+  "snapshot_out_mode": "subdir",
+  "concat_all": true,
+  "concat_filename": "feature_label_train_2024.parquet",
+  "created_col": "created_date",
+  "user_col": "customer_id",
+  "item_col": "item_id",
+
+  "len_test": 28,
+  "len_val": 28,
+  "len_hist": 120,
+  "len_recent": 30,
+
+  "ref_datetime": "2024-12-31 23:59:59",
+
+  "save_intermediate": true,
+  "compute_stats": false,
+
+  "trend_month_lag": 2,
+  "month_format": "%Y-%m",
+
+  "paths": {
+    "price_segment": "price_segment.parquet",
+    "customer_behavior": "customer_behavior.parquet",
+    "customer_luxury": "customer_luxury.parquet",
+    "customer_age_features": "customer_age_features.parquet",
+    "brand_segment": "brand_segment.parquet",
+    "top10_by_cat_month": "top10_by_cat_month.parquet"
+  },
+
+  "stage2_unused_for_now": {
+    "min_trans_items": 35,
+    "session_window": 1,
+    "train_set": [1],
+    "top_trans_items": 1000,
+    "N_trend": 100,
+    "N_cand": 300,
+    "min_coo": 600,
+    "N_neg": 10,
+    "n_iter": 1,
+    "Topk": 10,
+    "filter_bought_items": false,
+    "filter_fashion": false
+  }
+}
