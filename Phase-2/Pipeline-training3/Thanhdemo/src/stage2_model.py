@@ -2,6 +2,81 @@ import lightgbm as lgb
 import pandas as pd
 import numpy as np
 
+def train_lgbm_classifier(train_df, config, valid_df=None, feature_cols=None):
+    """
+    Train Binary Classification Model (Pointwise) cho RecSys.
+    Mục tiêu: Dự đoán xác suất user mua item (0 hoặc 1).
+    
+    Args:
+        train_df: DataFrame train
+        config: Config object (CFG.stage2)
+        valid_df: DataFrame valid
+        feature_cols: (Optional) Danh sách feature cụ thể cần dùng
+    """
+    
+    # 1. Xác định Features
+    if feature_cols is None:
+        ignore_cols = {'customer_id', 'item_id', 'label', 'created_date', 'created_datetime', 'pred_score'}
+        feature_cols = [c for c in train_df.columns if c not in ignore_cols]
+    
+    print(f"[Stage2] Training Classifier with {len(feature_cols)} features.")
+
+    # 2. Chuẩn bị dữ liệu (KHÔNG CẦN GROUP cho Binary)
+    X_train = train_df[feature_cols]
+    y_train = train_df["label"]
+    
+    # Tạo Dataset cho LightGBM
+    lgb_train = lgb.Dataset(X_train, y_train)
+    
+    # Valid set setup
+    valid_sets = [lgb_train]
+    valid_names = ['train']
+    
+    if valid_df is not None:
+        X_valid = valid_df[feature_cols]
+        y_valid = valid_df["label"]
+        lgb_eval = lgb.Dataset(X_valid, y_valid, reference=lgb_train)
+        valid_sets.append(lgb_eval)
+        valid_names.append('valid')
+
+    # 3. Setup Parameters (Binary Classification)
+    params = {
+        "objective": "binary",       # <--- THAY ĐỔI QUAN TRỌNG
+        "metric": "auc",             # Dùng AUC để tối ưu khả năng ranking (AUC cao -> Precision cao)
+        "boosting_type": "gbdt",
+        "learning_rate": config.learning_rate,
+        "num_leaves": config.num_leaves,
+        "min_data_in_leaf": config.min_data_in_leaf,
+        
+        # Xử lý mất cân bằng mẫu (Quan trọng cho RecSys vì số 0 >> số 1)
+        "is_unbalance": True,        
+        
+        "feature_fraction": 0.8,
+        "bagging_fraction": 0.8,
+        "bagging_freq": 1,
+        "verbosity": -1,
+        "random_state": 42
+    }
+
+    # 4. Train
+    callbacks = [
+        lgb.log_evaluation(period=50)
+    ]
+    
+    if valid_df is not None:
+        callbacks.append(lgb.early_stopping(stopping_rounds=50))
+
+    model = lgb.train(
+        params,
+        lgb_train,
+        num_boost_round=config.n_estimators,
+        valid_sets=valid_sets,
+        valid_names=valid_names,
+        callbacks=callbacks
+    )
+    
+    return model, feature_cols
+
 def train_lgbm_ranker(train_df, config, valid_df=None):
     """
     Train LambdaRank Model.

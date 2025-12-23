@@ -6,7 +6,7 @@
 
 from .data_loader import load_and_split_data
 from .stage1_model import ItemItemCFStage1
-from .stage2_model import train_lgbm_ranker, predict_stage2
+from .stage2_model import train_lgbm_ranker, predict_stage2, train_lgbm_classifier
 from .metrics import calculate_metrics_at_k
 from .utils import memory, save_parquet_cache, load_parquet_cache
 
@@ -15,6 +15,7 @@ __all__ = [
     "load_and_split_data",
     "ItemItemCFStage1",
     "train_lgbm_ranker",
+    "train_lgbm_classifier",
     "predict_stage2",
     "calculate_metrics_at_k",
     "memory",

@@ -13,6 +13,7 @@ from src import (
     load_and_split_data, 
     ItemItemCFStage1, 
     train_lgbm_ranker, 
+    train_lgbm_classifier,
     predict_stage2,
     calculate_metrics_at_k,
     load_parquet_cache,

@@ -13,6 +13,7 @@ from src import (
     load_and_split_data, 
     ItemItemCFStage1, 
     train_lgbm_ranker, 
+    train_lgbm_classifier,
     predict_stage2,
     calculate_metrics_at_k,
     load_parquet_cache,
@@ -137,29 +138,29 @@ def run_pipeline_flow(
     # ====================================================
     # 4. EVALUATION (KHÔNG CACHE)
     # ====================================================
-    print(f"[{flow_name}] Evaluating...")
-    df_pred = predict_stage2(
-        lgbm_model,
-        df_stage2_train,
-        feature_cols=feature_cols,
-        top_k=10
-    )
+    # print(f"[{flow_name}] Evaluating...")
+    # df_pred = predict_stage2(
+    #     lgbm_model,
+    #     df_stage2_train,
+    #     feature_cols=feature_cols,
+    #     top_k=10
+    # )
 
-    gt_valid = df_valid.groupby("customer_id")["item_id"].apply(set).to_dict()
+    # gt_valid = df_valid.groupby("customer_id")["item_id"].apply(set).to_dict()
 
-    metrics = calculate_metrics_at_k(
-        df_pred,
-        gt_valid,
-        train_history,
-        k=CFG.evaluation.k_metric,
-        filter_bought_items=filter_bought_eval
-    )
+    # metrics = calculate_metrics_at_k(
+    #     df_pred,
+    #     gt_valid,
+    #     train_history,
+    #     k=CFG.evaluation.k_metric,
+    #     filter_bought_items=filter_bought_eval
+    # )
 
-    print(f"\n--- RESULTS {flow_name.upper()} ---")
-    for k, v in metrics.items():
-        print(f"{k}: {v}")
+    # print(f"\n--- RESULTS {flow_name.upper()} ---")
+    # for k, v in metrics.items():
+    #     print(f"{k}: {v}")
 
-    return metrics
+    # return metrics
 
 
 def main():

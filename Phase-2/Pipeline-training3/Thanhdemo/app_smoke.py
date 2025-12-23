@@ -18,13 +18,16 @@ PATH_ITEM_DIR = CFG.paths.raw_data_path
 PATH_TRX_DIR = CFG.paths.raw_data_path
 
 # ==========================================
-# CẤU HÌNH CỘT HIỂN THỊ (ĐÃ BỎ ITEM NAME)
+# CẤU HÌNH CỘT HIỂN THỊ (QUAN TRỌNG)
 # ==========================================
+# Key: Tên hiển thị trên UI
+# Value: Tên trường trong file metadata (parquet)
 FIELD_MAP = {
-    # "Item Name": "item_name",  <-- ĐÃ BỎ
+    "Item Name": "item_name",
     "Category": "category",
     "L1": "category_l1",
     "L2": "category_l2",
+    "L3": "category_l3",
     "Brand": "brand_final",
     "Age Group": "age_group_final",
     "Price": "price"
@@ -40,14 +43,7 @@ def read_parquet_pattern(base_path, keyword, columns=None):
     dfs = []
     for f in files:
         try:
-            # Đọc parquet
             df = pd.read_parquet(f, columns=columns)
-            # [FIX] Ép kiểu string ngay lập tức sau khi đọc để tránh mất số 0
-            # Nếu cột item_id có trong df, ép về str
-            if 'item_id' in df.columns:
-                df['item_id'] = df['item_id'].astype(str)
-            if 'customer_id' in df.columns:
-                df['customer_id'] = df['customer_id'].astype(str)
             dfs.append(df)
         except Exception: continue
     return pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
@@ -61,7 +57,7 @@ def convert_dict_to_df(pkl_path):
         for rank, item in enumerate(items, start=1):
             rows.append({
                 "customer_id": str(user),
-                "item_id": str(item), # Giữ nguyên string từ pickle
+                "item_id": str(item),
                 "rank": rank,
                 "pred_score": 1.0 / rank 
             })
@@ -73,8 +69,8 @@ def convert_dict_to_df(pkl_path):
 # LOAD DATA
 # ==========================================
 @st.cache_data
-def load_data_pkl_v4(): # Đổi tên v4 để clear cache
-    """Load Predictions & GT (Fix ID format)"""
+def load_data_pkl_v3(): 
+    """Load Predictions & GT"""
     df_new = convert_dict_to_df(PATH_PRED_NEW)
     if df_new is None: st.error(f"❌ Thiếu file: {PATH_PRED_NEW}"); st.stop()
         
@@ -85,37 +81,25 @@ def load_data_pkl_v4(): # Đổi tên v4 để clear cache
     with open(PATH_GT, "rb") as f: gt_data = pickle.load(f)
         
     gt_clean = {}
-    
-    # --- Xử lý Ground Truth ---
+    # Xử lý GT
     if isinstance(gt_data, pd.DataFrame):
         u_col, i_col = 'customer_id', 'item_id'
         if not gt_data.empty:
             first = gt_data[i_col].iloc[0]
             if isinstance(first, (list, np.ndarray, set)):
                 gt_data = gt_data.explode(i_col)
-        
         gt_data = gt_data.dropna(subset=[u_col, i_col])
-        
-        # [FIX QUAN TRỌNG] Chỉ ép về str, KHÔNG ép về float/int trung gian
-        # Điều này giữ nguyên '00123' thay vì biến thành '123'
         gt_data[u_col] = gt_data[u_col].astype(str)
-        gt_data[i_col] = gt_data[i_col].astype(str)
-        
-        # Nếu data bị dính .0 (do file gốc lưu float), dùng regex để xóa
-        # gt_data[i_col] = gt_data[i_col].str.replace(r'\.0$', '', regex=True)
-
+        try: gt_data[i_col] = gt_data[i_col].astype(float).astype(np.int64).astype(str)
+        except: gt_data[i_col] = gt_data[i_col].astype(str)
         gt_clean = gt_data.groupby(u_col)[i_col].apply(set).to_dict()
-        
     elif isinstance(gt_data, dict):
         for key in ['gt_test', 'test', 'groundtruth']:
             if key in gt_data: gt_data = gt_data[key]; break
         for u, v in gt_data.items():
             u_str = str(u)
-            if isinstance(v, (list, tuple, set, np.ndarray)):
-                # Đảm bảo item trong list cũng là string chuẩn
-                gt_clean[u_str] = set(str(x) for x in v)
-            else:
-                gt_clean[u_str] = {str(v)}
+            if isinstance(v, (list, tuple, set, np.ndarray)): gt_clean[u_str] = set(str(x) for x in v)
+            else: gt_clean[u_str] = {str(v)}
                 
     return df_new, df_all, gt_clean
 
@@ -124,14 +108,13 @@ def load_train_user_set():
     try:
         if os.path.exists(PATH_MODEL_S1):
             stage1 = joblib.load(PATH_MODEL_S1)
-            # Ép kiểu set keys về string để so sánh chuẩn
-            return set(str(k) for k in stage1.user_id_to_index_.keys())
+            return set(stage1.user_id_to_index_.keys())
         return set()
     except: return set()
 
 @st.cache_data
 def load_metadata():
-    # Chỉ load item_id và các cột trong FIELD_MAP
+    # Lấy danh sách cột cần thiết từ values của FIELD_MAP + item_id
     cols_needed = ["item_id"] + list(FIELD_MAP.values())
     
     pattern = os.path.join(PATH_ITEM_DIR, "*item_chunk*.parquet")
@@ -141,13 +124,10 @@ def load_metadata():
     try:
         sample_cols = pd.read_parquet(files[0]).columns.tolist()
         final_cols = [c for c in cols_needed if c in sample_cols]
-        
         df_item = read_parquet_pattern(PATH_ITEM_DIR, "item_chunk", columns=final_cols)
         if df_item.empty: return {}
         
-        # [FIX] Ép kiểu string ngay khi load metadata
         df_item['item_id'] = df_item['item_id'].astype(str)
-        
         df_item = df_item.drop_duplicates("item_id")
         return df_item.set_index("item_id").to_dict(orient="index")
     except: return {}
@@ -158,22 +138,15 @@ def get_user_history_dynamic(user_id):
     user_history_dfs = []
     cols = ['customer_id', 'item_id', 'created_date']
     
-    # user_id input đã là string
-    target_uid = str(user_id)
-    
     for f in files:
         try:
             df_chunk = pd.read_parquet(f, columns=cols)
-            # [FIX] Ép kiểu trước khi so sánh
-            df_chunk['customer_id'] = df_chunk['customer_id'].astype(str)
-            df_chunk['item_id'] = df_chunk['item_id'].astype(str)
-            
-            df_user = df_chunk[df_chunk['customer_id'] == target_uid]
+            df_user = df_chunk[df_chunk['customer_id'].astype(str) == str(user_id)]
             if not df_user.empty: user_history_dfs.append(df_user)
         except: continue
-        
     if not user_history_dfs: return pd.DataFrame()
     df_hist = pd.concat(user_history_dfs, ignore_index=True)
+    df_hist['item_id'] = df_hist['item_id'].astype(str)
     if 'created_date' in df_hist.columns:
         df_hist = df_hist.sort_values('created_date', ascending=False)
     return df_hist
@@ -192,12 +165,13 @@ def display_recs(df, user_id, item_map, gt_items, title, top_k=10):
         st.info("No recommendations generated.")
         return
 
+    # Sort
     if 'rank' in user_recs.columns:
         user_recs = user_recs.sort_values("rank", ascending=True).head(top_k)
     else:
         user_recs = user_recs.head(top_k)
     
-    # Map Metadata
+    # [FIXED] Tạo cột dựa trên FIELD_MAP
     for display_name, meta_key in FIELD_MAP.items():
         user_recs[display_name] = user_recs['item_id'].apply(
             lambda x: item_map.get(x, {}).get(meta_key, 'N/A')
@@ -205,8 +179,10 @@ def display_recs(df, user_id, item_map, gt_items, title, top_k=10):
         
     user_recs['Is Hit 🎯'] = user_recs['item_id'].apply(lambda x: '✅' if x in gt_items else '')
     
-    # Chọn cột hiển thị (bỏ Item Name)
+    # Định nghĩa thứ tự cột hiển thị
     cols_show = ['Is Hit 🎯', 'rank', 'item_id'] + list(FIELD_MAP.keys())
+    
+    # Filter columns that actually exist (Safety check)
     final_cols = [c for c in cols_show if c in user_recs.columns]
     
     st.dataframe(
@@ -231,7 +207,7 @@ def main():
         st.rerun()
 
     with st.spinner("Loading Data..."):
-        df_new, df_all, gt_clean = load_data_pkl_v4()
+        df_new, df_all, gt_clean = load_data_pkl_v3()
         item_map = load_metadata()
         train_user_set = load_train_user_set()
         
@@ -267,6 +243,7 @@ def main():
             with st.expander("History"):
                 df_h = get_user_history_dynamic(selected_user)
                 if not df_h.empty:
+                    # Map metadata cho history
                     for display_name, meta_key in FIELD_MAP.items():
                         df_h[display_name] = df_h['item_id'].apply(
                             lambda x: item_map.get(x, {}).get(meta_key, 'N/A')
@@ -282,6 +259,7 @@ def main():
             gt_rows = []
             for i in gt_items:
                 row = {"item_id": i}
+                # Map metadata cho GT
                 for display_name, meta_key in FIELD_MAP.items():
                     row[display_name] = item_map.get(i, {}).get(meta_key, 'N/A')
                 gt_rows.append(row)

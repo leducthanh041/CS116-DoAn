@@ -17,25 +17,12 @@
     "weight_type": "rel_freq",
     "use_ui_recency": true,
     "ui_recency_lambda": 0.01,
-    "use_cat_l1_pref": true,
-    "alpha_l1_cnt": 0.05,
-    "alpha_l1_spent": 0.05,
-    "alpha_l1_rec": 0.1,
-    "cold_pop_alpha": 0.8,
-    "cold_pop_beta": 0.2,
-    "use_implicit": true,
-    "top_k_model": 120,
-    "K_tfidf": 90,
-    "K_cosine": 90,
-    "w_tfidf": 0.5,
-    "w_cosine": 0.5,
-    "n_trend": 20,
     "trend_source": "global_30d"
   },
   "stage2": {
     "num_leaves": 31,
     "learning_rate": 0.05,
-    "n_estimators": 200,
+    "n_estimators": 600,
     "min_data_in_leaf": 50
   },
   "evaluation": {
