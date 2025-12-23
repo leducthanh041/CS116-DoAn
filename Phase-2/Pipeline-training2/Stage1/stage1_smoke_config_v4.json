@@ -1,0 +1,72 @@
+{
+  "transactions_path_glob": ".././preprocessed-dataset/sale_pers.purchase_history_daily_chunk_*.parquet",
+  "items_path_glob": ".././preprocessed-dataset/sale_pers.item_chunk_*.parquet",
+  "users_path_glob": ".././preprocessed-dataset/sale_pers.user_chunk_*.parquet",
+  "artifacts_dir": "./artifacts_stage1",
+  "run_name": "smoke_v4",
+  "train_end": "2024-11-30",
+  "recent_begin": "2024-12-01",
+  "seen_begin": "2024-01-01",
+  "seen_end": "2024-11-30",
+  "len_hist": 120,
+  "len_recent": 30,
+  "N_cand": 50,
+  "N_trend": 10,
+  "weight_type": "log_count",
+  "K_model_mult": 3,
+  "use_recency": true,
+  "recency_halflife_days": 30.0,
+  "use_discount": true,
+  "discount_beta": 0.7,
+  "min_discount_factor": 0.2,
+  "use_category_channel": true,
+  "N_cat": 50,
+  "cat_items_per_cat": 30,
+  "cohort_mode": "none",
+  "num_threads": 0,
+  "batch_users": 600000,
+  "do_random_search": true,
+  "n_trials": 1,
+  "random_state": 42,
+  "quick": true,
+  "max_rows_train": 0,
+  "max_rows_eval": 0,
+  "search_space": {
+    "len_hist": [
+      60
+    ],
+    "len_recent": [
+      30
+    ],
+    "N_cand": [
+      50
+    ],
+    "N_trend": [
+      10
+    ],
+    "weight_type": [
+      "log_count"
+    ],
+    "use_recency": [
+      false
+    ],
+    "use_discount": [
+      false
+    ],
+    "use_category_channel": [
+      false
+    ],
+    "K_model_mult": [
+      2
+    ]
+  },
+  "final_train_end": "2024-12-31",
+  "export_all_users_out": null,
+  "export_gt_users_out": null,
+  "compute_recall_from_groundtruth": false,
+  "refit_end_at_eval_end": true,
+  "quick_n_trials": 1,
+  "quick_max_rows_train": 50000,
+  "quick_max_rows_eval": 30000,
+  "quick_max_users_eval": 500
+}
