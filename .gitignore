@@ -12,3 +12,9 @@ Feature engineering
 __pycache__/
 *.parquet
 *.pkl
+LightGBM
+artifacts
+stage1_random_search
+lgb_stage2_ranking.txt
+artifacts_stage1
+artifacts_stage2
